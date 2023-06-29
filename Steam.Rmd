@@ -1,0 +1,1037 @@
+---
+title: "Steam"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-03-07"
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(lubridate)
+library(data.table)
+library(car)
+library(caret)
+library(caTools)
+library(cvms)
+library(dplyr)
+library(ggplot2)
+library(igraph)
+library(knitr)
+library(lmtest)
+library(psych)
+library(sandwich)
+library(tibble)
+library(tidyr)
+```
+
+#TABLE 4: Games Released on Steam Per Year
+```{r echo=FALSE}
+sep_dev_new <- read.csv2("sep_dev_new.csv",
+                sep = ",", 
+                dec = ".", header = TRUE)
+
+#Observations per day of the year
+obs_day <-
+  sep_dev_new %>% count(day_of_year = date(Release.date))
+
+#Observations per year
+obs_year <-
+  sep_dev_new %>% count(yr = year(Release.date))
+
+kable(obs_year, caption = "Games Released on Steam per year", col.names = c("Year", "Games Released"))
+
+rm(obs_year, obs_day)
+```
+
+FIGURE 7 & 8: Percentage of Games Released by Individual Developers and Percentage of Games Released per other Developer Combinations
+```{r}
+#Make a for-loop to create a dataframe per year.
+for(i in 1:27){
+  yearx <- 1996 + i
+  x <- subset(sep_dev_new, substr(Release.date, 1, 4) %in% as.character(yearx))
+  assign(paste0("x", yearx), x)
+}
+rm(x)
+
+worktogetherallyears <- data.frame("V1" = 1:15, row.names = c("Individual Releases", "Two-Developer Releases", "Three-Developer Releases", "Four-Developer Releases", "Five-Developer releases", "Six-Developer Releases", "Seven-Developer Releases", "Eight-Developer Releases", "Nine-Developer Releases", "Ten-Developer Releases", "Eleven-Developer Releases", "Twelve-Developer Releases", "Thirteen-Developer Releases", "Fourteen-Developer Releases", "Fifteen-Developer Releases"))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 1] <- (nrow(x1997) - sum(is.na(x1997[5+i]))) - (nrow(x1997) - sum(is.na(x1997[6+i])))
+}
+worktogetherallyears[15,1] <- nrow(x1997) - sum(is.na(x1997$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 2] <- (nrow(x1998) - sum(is.na(x1998[5+i]))) - (nrow(x1998) - sum(is.na(x1998[6+i])))
+}
+worktogetherallyears[15,2] <- nrow(x1998) - sum(is.na(x1998$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 3] <- (nrow(x1999) - sum(is.na(x1999[5+i]))) - (nrow(x1999) - sum(is.na(x1999[6+i])))
+}
+worktogetherallyears[15,3] <- nrow(x1999) - sum(is.na(x1999$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 4] <- (nrow(x2000) - sum(is.na(x2000[5+i]))) - (nrow(x2000) - sum(is.na(x2000[6+i])))
+}
+worktogetherallyears[15,4] <- nrow(x2000) - sum(is.na(x2000$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 5] <- (nrow(x2001) - sum(is.na(x2001[5+i]))) - (nrow(x2001) - sum(is.na(x2001[6+i])))
+}
+worktogetherallyears[15,5] <- nrow(x2001) - sum(is.na(x2001$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 6] <- (nrow(x2002) - sum(is.na(x2002[5+i]))) - (nrow(x2002) - sum(is.na(x2002[6+i])))
+}
+worktogetherallyears[15,6] <- nrow(x2002) - sum(is.na(x2002$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 7] <- (nrow(x2003) - sum(is.na(x2003[5+i]))) - (nrow(x2003) - sum(is.na(x2003[6+i])))
+}
+worktogetherallyears[15,7] <- nrow(x2003) - sum(is.na(x2003$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 8] <- (nrow(x2004) - sum(is.na(x2004[5+i]))) - (nrow(x2004) - sum(is.na(x2004[6+i])))
+}
+worktogetherallyears[15,8] <- nrow(x2004) - sum(is.na(x2004$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 9] <- (nrow(x2005) - sum(is.na(x2005[5+i]))) - (nrow(x2005) - sum(is.na(x2005[6+i])))
+}
+worktogetherallyears[15,9] <- nrow(x2005) - sum(is.na(x2005$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 10] <- (nrow(x2006) - sum(is.na(x2006[5+i]))) - (nrow(x2006) - sum(is.na(x2006[6+i])))
+}
+worktogetherallyears[15,10] <- nrow(x2006) - sum(is.na(x2006$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 11] <- (nrow(x2007) - sum(is.na(x2007[5+i]))) - (nrow(x2007) - sum(is.na(x2007[6+i])))
+}
+worktogetherallyears[15,11] <- nrow(x2007) - sum(is.na(x2007$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 12] <- (nrow(x2008) - sum(is.na(x2008[5+i]))) - (nrow(x2008) - sum(is.na(x2008[6+i])))
+}
+worktogetherallyears[15,12] <- nrow(x2008) - sum(is.na(x2008$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 13] <- (nrow(x2009) - sum(is.na(x2009[5+i]))) - (nrow(x2009) - sum(is.na(x2009[6+i])))
+}
+worktogetherallyears[15,13] <- nrow(x2009) - sum(is.na(x2009$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 14] <- (nrow(x2010) - sum(is.na(x2010[5+i]))) - (nrow(x2010) - sum(is.na(x2010[6+i])))
+}
+worktogetherallyears[15,14] <- nrow(x2010) - sum(is.na(x2010$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 15] <- (nrow(x2011) - sum(is.na(x2011[5+i]))) - (nrow(x2011) - sum(is.na(x2011[6+i])))
+}
+worktogetherallyears[15,15] <- nrow(x2011) - sum(is.na(x2011$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 16] <- (nrow(x2012) - sum(is.na(x2012[5+i]))) - (nrow(x2012) - sum(is.na(x2012[6+i])))
+}
+worktogetherallyears[15,16] <- nrow(x2012) - sum(is.na(x2012$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 17] <- (nrow(x2013) - sum(is.na(x2013[5+i]))) - (nrow(x2013) - sum(is.na(x2013[6+i])))
+}
+worktogetherallyears[15,17] <- nrow(x2013) - sum(is.na(x2013$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 18] <- (nrow(x2014) - sum(is.na(x2014[5+i]))) - (nrow(x2014) - sum(is.na(x2014[6+i])))
+}
+worktogetherallyears[15,18] <- nrow(x2014) - sum(is.na(x2014$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 19] <- (nrow(x2015) - sum(is.na(x2015[5+i]))) - (nrow(x2015) - sum(is.na(x2015[6+i])))
+}
+worktogetherallyears[15,19] <- nrow(x2015) - sum(is.na(x2015$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 20] <- (nrow(x2016) - sum(is.na(x2016[5+i]))) - (nrow(x2016) - sum(is.na(x2016[6+i])))
+}
+worktogetherallyears[15,20] <- nrow(x2016) - sum(is.na(x2016$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 21] <- (nrow(x2017) - sum(is.na(x2017[5+i]))) - (nrow(x2017) - sum(is.na(x2017[6+i])))
+}
+worktogetherallyears[15,21] <- nrow(x2017) - sum(is.na(x2017$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 22] <- (nrow(x2018) - sum(is.na(x2018[5+i]))) - (nrow(x2018) - sum(is.na(x2018[6+i])))
+}
+worktogetherallyears[15,22] <- nrow(x2018) - sum(is.na(x2018$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 23] <- (nrow(x2019) - sum(is.na(x2019[5+i]))) - (nrow(x2019) - sum(is.na(x2019[6+i])))
+}
+worktogetherallyears[15,23] <- nrow(x2019) - sum(is.na(x2019$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 24] <- (nrow(x2020) - sum(is.na(x2020[5+i]))) - (nrow(x2020) - sum(is.na(x2020[6+i])))
+}
+worktogetherallyears[15,24] <- nrow(x2020) - sum(is.na(x2020$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 25] <- (nrow(x2021) - sum(is.na(x2021[5+i]))) - (nrow(x2021) - sum(is.na(x2021[6+i])))
+}
+worktogetherallyears[15,25] <- nrow(x2021) - sum(is.na(x2021$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 26] <- (nrow(x2022) - sum(is.na(x2022[5+i]))) - (nrow(x2022) - sum(is.na(x2022[6+i])))
+}
+worktogetherallyears[15,26] <- nrow(x2022) - sum(is.na(x2022$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallyears[i, 27] <- (nrow(x2023) - sum(is.na(x2023[5+i]))) - (nrow(x2023) - sum(is.na(x2023[6+i])))
+}
+worktogetherallyears[15,27] <- nrow(x2023) - sum(is.na(x2023$Developer_15))
+
+#Make it percentages
+for(i in 1:27){
+  worktogetherallyears[,i] <- round(100 * worktogetherallyears[,i]/sum(worktogetherallyears[,i]), digits = 3)
+}
+
+colnames(worktogetherallyears) <- c("1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
+transposed <- as.data.frame(t(worktogetherallyears))
+colnames(transposed) <- c("Individual Releases", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen")
+transposed[1:8, 2] <- NA
+transposed[1:11, 3] <- NA
+transposed[1:14, 4] <- NA
+transposed[1:16, 5] <- NA
+transposed[1:18, 6] <- NA
+transposed[1:16, 7] <- NA
+transposed[1:19, 8] <- NA
+transposed[1:24, 9] <- NA
+
+dev1 <- ggplot(data = transposed, aes(x = row.names(transposed))) +
+  geom_line(aes(x = row.names(transposed), y = `Individual Releases`), colour = 'black', group = 1, linewidth = 1) +
+    geom_point(aes(x = row.names(transposed), y = `Individual Releases`), colour = 'black', size = 2) +
+  theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.position = "top", text = element_text(family = "serif")) +
+  labs(x = "Release Year", y = "Percentage", color = "Developers") + 
+  ggtitle("Figure X: Percentage of Games Released by Individual Developers") +
+  scale_colour_discrete(limits = "Individual Releases")
+dev1
+
+suppressWarnings(print(
+devall <- ggplot(data = transposed, aes(x = row.names(transposed))) +
+  geom_line(aes(y = `Two`, color = "Two"), group = 1, linewidth = 1) +
+    geom_point(aes(y = `Two`, color = "Two"), size = 2) +
+  geom_line(aes(y = `Three`, color = "Three"), group = 1, linewidth = 1, alpha = 0.4) +
+    geom_point(aes(y = `Three`, color = "Three"), size = 2, alpha = 0.4) +
+  geom_line(aes(y = `Four`, color = "Four"), group = 1, linewidth = 1, alpha = 0.4) +
+    geom_point(aes(y = `Four`, color = "Four"), size = 2, alpha = 0.4) +
+  geom_line(aes(y = `Five`, color = "Five"), group = 1, linewidth = 1, alpha = 0.4) +
+    geom_point(aes(y = `Five`, color = "Five"), size = 2, alpha = 0.4) +
+  geom_line(aes(y = `Six`, color = "Six"), group = 1, linewidth = 1, alpha = 0.4) +
+    geom_point(aes(y = `Six`, color = "Six"), size = 2, alpha = 0.4) +
+  geom_line(aes(y = `Seven`, color = "Seven"), group = 1, linewidth = 1, alpha = 0.4) +
+    geom_point(aes(y = `Seven`, color = "Seven"), size = 2, alpha = 0.4) +
+  geom_line(aes(y = `Eight`, color = "Eight"), group = 1, linewidth = 1, alpha = 0.4) +
+    geom_point(aes(y = `Eight`, color = "Eight"), size = 2, alpha = 0.4) +
+  geom_line(aes(y = `Nine`, color = "Nine"), group = 1, linewidth = 1, alpha = 0.4) +
+    geom_point(aes(y = `Nine`, color = "Nine"), size = 2, alpha = 0.4) +
+  theme_bw()+ 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.position = c(0.105, 0.625), text = element_text(family = "serif")) +
+  labs(x = "Release Year", y = "Percentage", color = "Developers") + 
+  ggtitle("Figure X: Percentage of Games Released per Developer Combination") +
+  scale_colour_discrete(limits = c("Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"))
+))
+theme(text = element_text(family = "serif"))
+#ggsave("Single Developer Change.png", dev1, width = 5, height = 4)
+#ggsave("Multiple Developer Change.png", devall, width = 5, height = 4)
+
+rm(dev1, devall, transposed, worktogetherallyears, x1997, x1998, x1999, x2000, x2001, x2002, x2003, x2004, x2005, x2006, x2007, x2008, x2009, x2010, x2011, x2012, x2013, x2014, x2015, x2016, x2017, x2018, x2019, x2020, x2021, x2022, x2023, yearx, i)
+```
+
+
+#FIGURE 1: Number of Video Games Per Quality Category
+```{r}
+sep_dev_new$categories <- cut(sep_dev_new$PropTotal, breaks = seq(0, 1, 0.05), include.lowest = TRUE) #Make 20 categories of quality category.
+unique(sep_dev_new$categories)
+
+categories <- sep_dev_new %>% count(categories)
+means <- aggregate(Est_Players ~ categories, data = sep_dev_new, FUN = mean)
+all <- left_join(categories, means)
+all$Est_Players <- as.numeric(all$Est_Players)
+all$Est_Players <- round(all$Est_Players, digits = 0)
+all$Est_Players <- all$Est_Players/500 #Making Est_Players on a similar scale as the number of game observations. Dividing by 1000 is easier to understand, but dividing by 500 gives a nicer looking plot. Dividing by 100 is too little.
+#Move the observation of category 0 to 0.05 because for some reason it goes wrong
+
+
+
+novideogames <- ggplot(data = all) +
+  geom_col(aes(x = categories, y = n, fill = ""), color = "black") +   
+  geom_line(aes(x = categories, y = Est_Players, alpha = 1), color = "black", group = 1, linewidth = 1) +
+  geom_point(aes(x = categories, y = Est_Players), color = "black", size = 2) +
+  scale_y_continuous(name = "Number of Games", sec.axis = sec_axis(trans = ~.*500, name = "Average Video Game Sales")) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, family = "serif"), legend.position = "top",
+    axis.text.y = element_text(family = "serif"),
+    axis.title = element_text(family = "serif"),
+    legend.title = element_text(family = "serif")
+    ) +
+  labs(x = "Quality Category", fill = "No. of video games" , alpha = "Avg. Unit Sales") +
+  ggtitle("Figure 1: Number of video games per quality category") 
+
+#ggsave("novideogames.png", novideogames, width = 8, height = 5)
+
+rm(all, categories, means, novideogames)
+```
+
+
+#TABLE 5 - GAMES RELEASED PER DEVELOPER COMBINATION
+```{r echo=FALSE}
+#These commands show the distinct values in each column. So, there are 13.166 unique developers in the dataset
+print("Number of unique developers")
+sep_dev2 <- sep_dev_new[, c(2, 6:20)]
+sep_dev_long <- sep_dev2 %>%
+  pivot_longer(cols = c(Developer_1, Developer_2, Developer_3, Developer_4, Developer_5, Developer_6, Developer_7, Developer_8, Developer_9, Developer_10, Developer_11, Developer_12, Developer_13, Developer_14, Developer_15),
+               names_to = "oldcolnames",
+               values_to = "Developers")
+sep_dev_long <- na.omit(sep_dev_long) #In all Developer columns, there are a total of 13.166 different developers.
+unique <- unique(sep_dev_long$Developers)
+
+#Counting the total partnerships. The first equation shows that there are 18173 games released individually. The second equation shows that there are 1120 games released for two developers working together. The third equation shows that there are 149 games released for three developers working together, etcetera.
+worktogether <- data.frame("Game Releases" = 1:15, row.names = c("Individual Releases", "Two-Developer Releases", "Three-Developer Releases", "Four-Developer Releases", "Five-Developer releases", "Six-Developer Releases", "Seven-Developer Releases", "Eight-Developer Releases", "Nine-Developer Releases", "Ten-Developer Releases", "Eleven-Developer Releases", "Twelve-Developer Releases", "Thirteen-Developer Releases", "Fourteen-Developer Releases", "Fifteen-Developer Releases"))
+
+for(i in 1:15) {
+  worktogether[i, 1] <- (nrow(sep_dev_new) - sum(is.na(sep_dev_new[5+i]))) - (nrow(sep_dev_new) - sum(is.na(sep_dev_new[6+i])))
+}
+worktogether[15,1] <- nrow(sep_dev_new) - sum(is.na(sep_dev_new$Developer_15))
+
+worktogether$Percentage <- round(100 * worktogether$Game.Releases/sum(worktogether$Game.Releases), digits = 3)
+
+kable(worktogether, caption = "Games Released per Developer combination", col.names = c("Games Released", "Percentage"))
+
+rm(worktogether, sep_dev_long, sep_dev2, unique, i)
+```
+#Making the Periods for tables that are not used anymore
+```{r include=FALSE}
+#The release dates split up in several time periods.
+Period1 <- subset(sep_dev_new, substr(Release.date, 1, 4) %in% c("1997", "1998", "1999", "2000", "2001"))
+Period2 <- subset(sep_dev_new, substr(Release.date, 1, 4) %in% c("2002", "2003", "2004", "2005", "2006"))
+Period3 <- subset(sep_dev_new, substr(Release.date, 1, 4) %in% c("2007", "2008", "2009", "2010", "2011"))
+Period4 <- subset(sep_dev_new, substr(Release.date, 1, 4) %in% c("2012", "2013", "2014", "2015", "2016"))
+Period5 <- subset(sep_dev_new, substr(Release.date, 1, 4) %in% c("2017", "2018", "2019", "2020", "2021", "2022"))
+```
+
+#Old Table that is not used anymore
+```{r echo=FALSE}
+worktogetherallperiods <- data.frame("V1" = 1:15, row.names = c("Individual Releases", "Two-Developer Releases", "Three-Developer Releases", "Four-Developer Releases", "Five-Developer releases", "Six-Developer Releases", "Seven-Developer Releases", "Eight-Developer Releases", "Nine-Developer Releases", "Ten-Developer Releases", "Eleven-Developer Releases", "Twelve-Developer Releases", "Thirteen-Developer Releases", "Fourteen-Developer Releases", "Fifteen-Developer Releases"))
+
+#worktogetherperiod1$Percentage <- round(100 * worktogetherperiod1$Game.Releases/sum(worktogetherperiod1$Game.Releases), digits = 3)
+
+for(i in 1:15) {
+  worktogetherallperiods[i, 1] <- (nrow(Period1) - sum(is.na(Period1[5+i]))) - (nrow(Period1) - sum(is.na(Period1[6+i])))
+}
+worktogetherallperiods[15,1] <- nrow(Period1) - sum(is.na(Period1$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallperiods[i, 2] <- (nrow(Period2) - sum(is.na(Period2[5+i]))) - (nrow(Period2) - sum(is.na(Period2[6+i])))
+}
+worktogetherallperiods[15,2] <- nrow(Period2) - sum(is.na(Period2$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallperiods[i, 3] <- (nrow(Period3) - sum(is.na(Period3[5+i]))) - (nrow(Period3) - sum(is.na(Period3[6+i])))
+}
+worktogetherallperiods[15,3] <- nrow(Period3) - sum(is.na(Period3$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallperiods[i, 4] <- (nrow(Period4) - sum(is.na(Period4[5+i]))) - (nrow(Period4) - sum(is.na(Period4[6+i])))
+}
+worktogetherallperiods[15,4] <- nrow(Period4) - sum(is.na(Period4$Developer_15))
+
+for(i in 1:15) {
+  worktogetherallperiods[i, 5] <- (nrow(Period5) - sum(is.na(Period5[5+i]))) - (nrow(Period5) - sum(is.na(Period5[6+i])))
+}
+worktogetherallperiods[15,5] <- nrow(Period5) - sum(is.na(Period5$Developer_15))
+
+kable(worktogetherallperiods, caption = "Games Released per Developer combination over the years", col.names = c("1997-2001", "2002-2006", "2007-2011", "2012-2016", "2017-2022"))
+
+```
+
+#Old Table that is not used anymore
+```{r echo=FALSE}
+worktogetherallperiodspercentage <- data.frame("V1" = 1:15, row.names = c("Individual Releases", "Two-Developer Releases", "Three-Developer Releases", "Four-Developer Releases", "Five-Developer releases", "Six-Developer Releases", "Seven-Developer Releases", "Eight-Developer Releases", "Nine-Developer Releases", "Ten-Developer Releases", "Eleven-Developer Releases", "Twelve-Developer Releases", "Thirteen-Developer Releases", "Fourteen-Developer Releases", "Fifteen-Developer Releases"))
+
+for(i in 1:5){
+  worktogetherallperiodspercentage[,i] <- round(100 * worktogetherallperiods[,i]/sum(worktogetherallperiods[,i]), digits = 3)
+}
+
+kable(worktogetherallperiodspercentage, caption = "Games Released per Developer combination over the years (in %)", col.names = c("1997-2001", "2002-2006", "2007-2011", "2012-2016", "2017-2022"))
+
+rm(worktogetherallperiodspercentage, worktogetherallperiods, Period1, Period2, Period3, Period4, Period5, i)
+```
+
+####ENTIRE DATA SNA
+```{r include=FALSE}
+y <- data.frame(sep_dev_new$Developer_1, #Get the separate developers.
+                sep_dev_new$Developer_2, 
+                sep_dev_new$Developer_3,
+                sep_dev_new$Developer_4,
+                sep_dev_new$Developer_5,
+                sep_dev_new$Developer_6,
+                sep_dev_new$Developer_7,
+                sep_dev_new$Developer_8,
+                sep_dev_new$Developer_9,
+                sep_dev_new$Developer_10,
+                sep_dev_new$Developer_11,
+                sep_dev_new$Developer_12,
+                sep_dev_new$Developer_13,
+                sep_dev_new$Developer_14,
+                sep_dev_new$Developer_15)
+
+net <- graph.data.frame(y, directed=F) #Make an undirected network
+V(net)$label <- V(net)$name #Set the names for the labels
+#V(net)$degree <- degree(net) #Set the degree values for the net
+
+na_node <- which(as.character(V(net)$name) == "NA")  #As the names are characters, detecting "which(is.na(V(g)$name))" doesn't work. Therefore, we read it as as.character, and then it works to detect the NA node.
+net_sub <- delete.vertices(net, na_node) #Delete the NA vertices.
+#net_sub_filtered <- delete.vertices(net_sub, which(degree(net_sub) < 2)) #With this you can filter on the number of connections. For example, if you do <5, you will only see nodes that have more than 5 connections.
+
+(clu <- components(net_sub)) #This shows all the clusters. clu$no shows that there are 11555 clusters. These also contains single nodes. It further shows each clustersize with $csize. 
+
+gMax <- induced_subgraph(net_sub, V(net_sub)[clu$membership == which.max(clu$csize)])  #This selects the largest cluster
+g  <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 1)]) #Select cluster with 1 or more nodes
+g2 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 2)])
+g3 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 3)])
+g4 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 4)]) #This selects the clusters larger than a specific value. 1 selects all of them, 2 selects 2000 of them, 3 about 500, 4 about 287. For visualization anything lower than 4 would be interesting.
+g5 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 5)])
+g6 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 6)])
+
+#g6 <- simplify(g6) #This removes the duplicate edges. However, we might be interested in duplicate edges
+
+rm(g2, g3, g4, g5, g6, gMax, y, clu, net, net_sub, na_node)
+```
+
+
+#TABLE 1: Number of Times Each Linkage Occurs
+```{r echo=FALSE}
+node_degrees <- degree(g)
+sorted_degrees_inc <- as.data.frame(sort(node_degrees, decreasing = FALSE))
+colnames(sorted_degrees_inc) <- "degree"
+sorted_degrees_inc <- rownames_to_column(sorted_degrees_inc, var = "Developers")
+
+#plot(x = 1:12857, y = sorted_degrees_inc[,2])
+
+t <- as.data.frame(table(sorted_degrees_inc$degree))
+
+t$Percentage <- round(100 * t$Freq/sum(t$Freq), digits = 3)
+
+kable(t, caption = "No. Times Each Linkage Occurs", col.names = c("No. Links", "Occurence", "Percentage"))
+
+rm(t, node_degrees)
+```
+
+Extra descriptives for the g
+```{r}
+round(describe(sorted_degrees_inc), digits = 3)[, -c(1,2,5,6,7,10:13)]
+rm(g, sorted_degrees_inc)
+```
+
+
+
+#########REGRESSION ANALYSIS
+
+#Model 2: Video Game Quality Sales H1B
+```{r}
+#Leave out: Genres_Animation & Modelling, Genres_Audio Production, Genres_Design & Illustration, Genres_Game Development, Genres_Photo Editing, Genres_Software Training, Genres_Utilities, Genres_Video Production, Genres_Web Publishing. This is because these are not corresponding to video games
+rownames(sep_dev_new) <- sep_dev_new$AppID
+
+sep_dev_new <- sep_dev_new[sep_dev_new$AppID != 221680, ] #Removing this observations as it is an outlier with 1500 DLC's, it will screw up with the QQplot and Residuals plots later on, making them hard to interpret.
+
+#Looking at Price, definitely make that a log transformation
+hist(sep_dev_new$Price)
+sep_dev_new$logprice <- log(sep_dev_new$Price + 1)
+hist(sep_dev_new$logprice)
+
+#Also looking at Estimated Players, it is heavily skewed, so also make a log transformation
+hist(sep_dev_new$Est_Players)
+sep_dev_new$logplayers <- log(sep_dev_new$Est_Players + 1)
+sep_dev_new$logplayers[sep_dev_new$logplayers == 0] <- NA
+hist(sep_dev_new$logplayers)
+sep_dev_logplayers <- sep_dev_new[, c(4,5, 21,22, 40, 58, 60:84)]
+sep_dev_logplayers <- na.omit(sep_dev_logplayers)
+hist(sep_dev_logplayers$logplayers)
+
+histplayers <- ggplot(data = sep_dev_new) +
+  geom_histogram(aes(x = Est_Players), fill = "darkred", colour = "black",  binwidth = 10000000) +
+  #geom_density(aes(x = PropTotal, y = ..density..))
+  scale_y_continuous(name = "Frequency") +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10.66, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266)) +
+  ggtitle("Figure X: Histogram of Sales") 
+ggsave("histplayers.png", histplayers, width = 4, height = 2.5)
+
+histlogplayers <- ggplot(data = sep_dev_logplayers) +
+  geom_histogram(aes(x = logplayers), fill = "darkred", colour = "black", binwidth = 0.5) +
+  #geom_density(aes(x = PropTotal, y = ..density..))
+  scale_y_continuous(name = "Frequency") +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 10.66, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266)) +
+  ggtitle("Figure X: Histogram of Sales") 
+ggsave("histlogplayers.png", histlogplayers, width = 4, height = 2.5)
+
+#I have looked at a few other models. Beta Regression doesn't work, as the dependent variable can only have values between 0 and 1, and not 0 and 1 itself, so that is already wrong. Other zero-inflated models such as Poission and Negative-Binomial require the dependent to be 0 and 1, which is also not the case. So, the only one that makes sense are a simple LM or a logistic regression. The reason for a logistic regression is because the dependent could be thought of as successes/total, so it makes sense. LM would just be the basic normal model.
+
+Model2 <- lm(logplayers ~ Superstar + NoDev + Previous_games + DLC.count + logprice + Degree + Genres_Action + Genres_Adventure + Genres_Casual + Genres_Early.Access + Genres_Education + Genres_Free.to.Play + Genres_Gore + Genres_Indie + Genres_Massively.Multiplayer + Genres_Nudity + Genres_RPG + Genres_Racing + Genres_Sexual.Content + Genres_Simulation + Genres_Sports + Genres_Strategy + Genres_Violent + year,
+           data = sep_dev_logplayers)
+summary(Model2)
+
+
+
+#Robust standard deviations
+s <- list(
+  "Standard" = vcov(Model2),
+  "Sandwich" = sandwich(Model2))
+t(sapply(s, function(x) sqrt(diag(x))))
+
+#Testing linear relationship between variables. For all of them this holds. A case could be made for NoDev or Degree that there is maybe a slight curvature through the data, because there are way fewer datapoints with higher developers and higher degree. I don't think this is an issue, however, as this is simply a case of the data being in a certain structure (i.e. many games simply have 1 developer, and not many)
+plot(sep_dev_logplayers$logplayers, sep_dev_logplayers$Price)
+
+#Testing normally distributed residuals. I think it holds, however a note should be made that it is not perfect. It is somewhat skewed to the left (i.e., there is a spike in the data on the right side, which makes sense.)
+plot(Model2, 2, main = "", sub = "")
+
+#Testiing multicollinearity. We get error that two or more variables are highly correlated when doing VIF: This is because Age_18 plus is perfectly correlated with the previous two, due to it being several dummy variables. Also, PreviousNinetyPlus and Previous_games are very highly correlated. This is interesting, they might measure the same thing. 
+car::vif(Model2)
+
+#Lastly, testing the homoscedasticity. Also interesting, it might show some form of heteroscedasticity. Mainly, there are large outliers pulling it downwards, but more importantly, the normally distributed cloud seems to be bound by a hard limit at the top and bottom. Why this is, I do not know
+plot(Model2, 1)
+bptest(Model2)
+
+rm(histlogplayers, histplayers, s)
+```
+
+#Model 1: Video Game Quality H1A
+```{r}
+histquality <- ggplot(data = sep_dev_new, aes(x = PropTotal)) +
+  geom_histogram(fill = "darkred", colour = "black",  binwidth = 0.05) +
+  #geom_density(aes(x = PropTotal, y = ..density..))
+  scale_y_continuous(name = "Number of Games") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.position = "top",
+    axis.text = element_text(size = 10.66, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266)) +
+  ggtitle("Figure X: Histogram of Video Game Quality") 
+
+ggsave("histquality.png", histquality, width = 5.5, height = 3)
+
+suppressWarnings(Model1 <- glm(PropTotal ~ Superstar + NoDev + Previous_games + DLC.count + logprice + Degree + Genres_Action + Genres_Adventure + Genres_Casual + Genres_Early.Access + Genres_Education + Genres_Free.to.Play + Genres_Gore + Genres_Indie + Genres_Massively.Multiplayer + Genres_Nudity + Genres_RPG + Genres_Racing + Genres_Sexual.Content + Genres_Simulation + Genres_Sports + Genres_Strategy + Genres_Violent + year,
+           data = sep_dev_new,
+           family = quasipoisson))
+
+
+summary(Model1)
+
+car::vif(Model1)
+
+#dispersiontest(Model1, alternative = c("less"))
+#summary.glm(Model1, dispersion = 0.2)
+
+
+
+# Loop over each variable in the dataset and create scatterplots
+for (var in names(df)) {
+  # Create a scatterplot between 'y' and the current variable
+  p <- ggplot(data = df, aes(x = y, y = df[[var]])) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE) +
+    labs(title = paste("Scatterplot: y vs", var), x = "y", y = var)
+  
+  # Display the scatterplot
+  print(p)
+}
+
+#Cook's distance and checking for outliers.
+png(file = "cook's distance.png", width = 800, height = 400)
+par(
+  bg = "white",  # Set panel background color
+  col.axis = "black",  # Set axis text color
+  col.lab = "black",  # Set axis label color
+  col.main = "black",  # Set plot title color
+  lwd = 0.266,  # Set line width
+  family = "serif"  # Set font family
+)
+plot(Model1, which = 4, id.n = 3, main = "")
+dev.off()
+
+cdist <- cooks.distance(Model1)
+high_cooks <- cdist[cdist > 0.01]
+
+#DFBetas
+DFBETAS <- dfbetas(Model1)
+par(mfrow=c(2,3))
+plot(DFBETAS[, "(Intercept)"], ylab="Intercept")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "SuperstarTRUE"], ylab="Superstar")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "NoDev"], ylab="No. Developers")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Previous_games"], ylab="Previous Games")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "DLC.count"], ylab="DLC Count")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "logprice"], ylab = "Log Price")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Degree"], ylab="Degree")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Action"], ylab="Action")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Adventure"], ylab="Adventure")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Casual"], ylab="Casual")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Early.Access"], ylab="Early Access")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Education"], ylab = "Education")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Free.to.Play"], ylab = "Free To Play")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Gore"], ylab = "Gore")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Indie"], ylab = "Indie")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Massively.Multiplayer"], ylab = "MM")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Nudity"], ylab = "Nudity")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_RPG"], ylab = "RPG")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Racing"], ylab = "Racing")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Sexual.Content"], ylab = "Sexual Content")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Simulation"], ylab = "Simulation")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Sports"], ylab = "Sports")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Strategy"], ylab = "Strategy")
+abline(h = c(-0.2, 0.2), lty = 2)
+plot(DFBETAS[, "Genres_Violent"], ylab = "Violent")
+abline(h = c(-0.2, 0.2), lty = 2)
+
+rm(DFBETAS, histquality, cdist, high_cooks, var)
+```
+
+#Model 3: Video Game Sales H1C
+```{r}
+#Regression of video game quality on video game sales.
+Model3 <- lm(logplayers ~ PropTotal + NoDev + Previous_games + DLC.count + logprice + Degree + Genres_Action + Genres_Adventure + Genres_Casual + Genres_Early.Access + Genres_Education + Genres_Free.to.Play + Genres_Gore + Genres_Indie + Genres_Massively.Multiplayer + Genres_Nudity + Genres_RPG + Genres_Racing + Genres_Sexual.Content + Genres_Simulation + Genres_Sports + Genres_Strategy + Genres_Violent + year,
+            data = sep_dev_logplayers)
+
+car::vif(Model3)
+
+summary(Model3)
+plot(Model3)
+
+vc <- list(
+  "Standard"              = vcov(Model3),
+  "Sandwich (basic)"      = sandwich(Model3)
+)
+t(sapply(vc, function(x) sqrt(diag(x))))
+
+rm(vc)
+```
+
+#Doing test/train split: Model 2
+```{r}
+#Split Data Set into Test and Train
+set.seed(666)
+split <- sample.split(sep_dev_new, SplitRatio = 0.8)
+train <- subset(sep_dev_new, split == "TRUE")
+test <- subset(sep_dev_new, split == "FALSE")
+
+suppressWarnings(QPoisTrain <- glm(PropTotal ~ Superstar + NoDev + Previous_games + DLC.count + logprice + Degree + Genres_Action + Genres_Adventure + Genres_Casual + Genres_Early.Access + Genres_Education + Genres_Free.to.Play + Genres_Gore + Genres_Indie + Genres_Massively.Multiplayer + Genres_Nudity + Genres_RPG + Genres_Racing + Genres_Sexual.Content + Genres_Simulation + Genres_Sports + Genres_Strategy + Genres_Violent + year,
+           data = train,
+           family = quasipoisson))
+
+summary(QPoisTrain)
+#Train set doesn't have any 1998 and 2000 variables, so delete those from test. 
+test <- test[-c(1:2),]
+pred <- exp(predict(QPoisTrain, test[,-58])) #Take the exponential, as they are log-odds.
+pred <- as.numeric(pred)
+
+test$pred <- pred
+test <- test %>% relocate(pred, .after=PropTotal)
+
+sqrt(mean((test$PropTotal - test$pred)^2))
+
+#Some bootstrapping
+#install.packages("insurancerating")
+#library(insurancerating)
+#set.seed(666)
+#bootstrap_rmse(
+#  QPoisTrain,
+#  sep_dev_new[-c(1:19),],
+#  n = 50,
+#  frac = 0.8,
+#  show_progress = TRUE,
+#  rmse_model = NULL
+#)
+
+#Make predicted categories
+test$predcategories <- cut(test$pred, breaks = seq(0, 1, 0.05), include.lowest = TRUE) #Make 20 categories of quality category.
+unique(test$predcategories) #Checking how many unique values there are, and there are 20, nicely ordered with 20 levels.
+test$categories <- cut(test$PropTotal, breaks = seq(0, 1, 0.05), include.lowest = TRUE)
+unique(test$categories)
+
+cm <- table(test$categories, test$predcategories)
+confusionMatrix(cm)
+
+library(cvms)
+cfm <- as.data.frame(cm)
+a <- plot_confusion_matrix(cfm,
+                      target_col = "Var1",
+                      prediction_col = "Var2",
+                      counts_col = "Freq",
+                      palette = "Greens",
+                      add_counts = FALSE,
+                      add_normalized = TRUE,
+                      add_row_percentages = FALSE,
+                      add_col_percentages = FALSE,
+                      rotate_y_text = FALSE,
+                      font_normalized = font(size = 1.75))
+a <- a + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
+               axis.text.y = element_text(size = 6))
+a
+
+#ggsave("confusionmatrix.png", a, width = 5, height = 5)
+heatmap(cm, Rowv = NA, Colv = NA)
+
+rm(a, cfm, QPoisTrain, cm, pred, split)
+```
+
+#Model 1
+```{r}
+logtrain <- lm(logplayers ~ Superstar + NoDev + Previous_games + DLC.count + logprice + Degree + Genres_Action + Genres_Adventure + Genres_Casual + Genres_Early.Access + Genres_Education + Genres_Free.to.Play + Genres_Gore + Genres_Indie + Genres_Massively.Multiplayer + Genres_Nudity + Genres_RPG + Genres_Racing + Genres_Sexual.Content + Genres_Simulation + Genres_Sports + Genres_Strategy + Genres_Violent + year,
+           data = train)
+summary(logtrain)
+
+#test <- test[-c(1:2),]
+pred2 <- predict(logtrain, test) #Take the exponential, as they are log-odds.
+pred2 <- as.numeric(pred2)
+
+test$pred2 <- pred2
+test <- test %>% relocate(pred2, .after=Est_Players)
+
+#Make predicted categories
+test$predcategories <- cut(test$pred, breaks = seq(0, 1, 0.05), include.lowest = TRUE) #Make 20 categories of quality category.
+unique(test$predcategories) #Checking how many unique values there are, and there are 20, nicely ordered with 20 levels.
+test$categories <- cut(test$PropTotal, breaks = seq(0, 1, 0.05), include.lowest = TRUE)
+unique(test$categories)
+
+rm(pred2, logtrain)
+```
+
+#Model 1 Graphs
+```{r}
+test$logplayers[is.na(test$logplayers)] <- 0
+sqrt(mean((test$logplayers - test$pred2)^2))
+test$logplayers[test$logplayers == 0] <- NA
+
+plot(test$logplayers)
+plot1 <- ggplot(test, aes(x = 1:3820, y = logplayers)) +
+  geom_point(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.7)+
+  theme(
+    # Specify theme elements and their properties
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_blank(),
+    axis.title = element_text(size = 10.66, family = "serif"),
+    axis.text = element_text(size = 9, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266),
+    plot.title = element_text(size = 10.66, family = "serif"),
+    axis.line = element_line(colour = "black", linewidth = 0.266)
+  )
+#ggsave("ploth1b.png", plot1, width = 3.5, height = 2.33)
+plot(test$pred2)
+plot2 <- ggplot(test, aes(x = 1:3820, y = pred2)) +
+  geom_point(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.7)+
+  theme(
+    # Specify theme elements and their properties
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_blank(),
+    axis.title = element_text(size = 10.66, family = "serif"),
+    axis.text = element_text(size = 9, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266),
+    plot.title = element_text(size = 10.66, family = "serif"),
+    axis.line = element_line(colour = "black", linewidth = 0.266)
+  )
+#ggsave("ploth1b2.png", plot2, width = 3.5, height = 2.33)
+
+rm(plot1, plot2)
+```
+
+Model 3 + Graphs
+```{r}
+qualsalestrain <- lm(logplayers ~ PropTotal + NoDev + Previous_games + DLC.count + logprice + Degree + Genres_Action + Genres_Adventure + Genres_Casual + Genres_Early.Access + Genres_Education + Genres_Free.to.Play + Genres_Gore + Genres_Indie + Genres_Massively.Multiplayer + Genres_Nudity + Genres_RPG + Genres_Racing + Genres_Sexual.Content + Genres_Simulation + Genres_Sports + Genres_Strategy + Genres_Violent + year,
+            data = train)
+
+pred3 <- predict(qualsalestrain, test) #Take the exponential, as they are log-odds.
+pred3 <- as.numeric(pred3)
+
+test$pred3 <- pred3
+test <- test %>% relocate(pred3, .after=pred2)
+
+test$logplayers[is.na(test$logplayers)] <- 0
+sqrt(mean((test$logplayers - test$pred3)^2))
+test$logplayers[test$logplayers == 0] <- NA
+
+plot3 <- ggplot(test, aes(x = 1:3820, y = logplayers)) +
+  geom_point(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.7)+
+  theme(
+    # Specify theme elements and their properties
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_blank(),
+    axis.title = element_text(size = 10.66, family = "serif"),
+    axis.text = element_text(size = 9, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266),
+    plot.title = element_text(size = 10.66, family = "serif"),
+    axis.line = element_line(colour = "black", linewidth = 0.266)
+  )
+#ggsave("ploth1c.png", plot3, width = 3.5, height = 2.33)
+plot(test$pred2)
+plot4 <- ggplot(test, aes(x = 1:3820, y = pred3)) +
+  geom_point(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.7)+
+  theme(
+    # Specify theme elements and their properties
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_blank(),
+    axis.title = element_text(size = 10.66, family = "serif"),
+    axis.text = element_text(size = 9, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266),
+    plot.title = element_text(size = 10.66, family = "serif"),
+    axis.line = element_line(colour = "black", linewidth = 0.266)
+  )
+#ggsave("ploth1c2.png", plot4, width = 3.5, height = 2.33)
+
+rm(pred3, qualsalestrain, plot3, plot4)
+```
+
+
+#Table 3: Additional Descriptives
+```{r}
+#MAKING SOME ADDITIONAL DESCRIPTIVES
+predictors <- sep_dev_new[, c(5,21,22, 30, 39,40,58,60:76, 78, 82:84)]
+
+summary(predictors$PropTotal)
+predictors$Superstar[predictors$Superstar == FALSE] <- 0 
+
+
+Descriptives <- round(describe(predictors[,-4]), digits = 4)[, -c(1,2,5,6,7,10:13)]
+print(Descriptives, digits = 3)
+
+descriptivesyear <- predictors %>%
+  group_by(year) %>%
+  summarize(
+    n()
+  )
+descriptivesyear
+
+rm(Descriptives, descriptivesyear, predictors)
+```
+
+
+#Saving Model 1 Diagnostics
+```{r}
+####MAKING PLOTS FOR FIRST LM MODEL ON SALES
+#Make a better residuals plot:
+residuals <- residuals(Model2)
+fitted <- fitted(Model2)
+residuals_df <- data.frame(Residuals = residuals, Fitted = fitted)
+res_plot <- ggplot(residuals_df, aes(x = Fitted, y = Residuals)) +
+  geom_point(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.7) +
+  labs(x = "Fitted Values", y = "Residuals") +
+  ggtitle("5B - Model 2: Log of Video Game Sales")+
+  theme(
+    # Specify theme elements and their properties
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_blank(),
+    axis.title = element_text(size = 10, family = "serif"),
+    axis.text = element_text(size = 10, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266),
+    plot.title = element_text(size = 10, family = "serif"),
+    axis.line = element_line(colour = "black", linewidth = 0.266)
+  )
+#ggsave("res_plot.png", res_plot, width = 3.2, height = 2.1)
+
+
+qqplot <- ggplot(residuals_df, aes(sample = Residuals)) +
+  stat_qq(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.6) +
+  labs(x = "Standard Residuals", y = "Theoretical Quantiles", title = "5A - Model 2: Log of Video Game Sales") +
+  stat_qq_line(linetype = "dashed", colour = "grey", linewidth = 0.266)+
+    theme(
+    # Specify theme elements and their properties
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_blank(),
+    axis.title = element_text(size = 10, family = "serif"),
+    axis.text = element_text(size = 10, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266),
+    plot.title = element_text(size = 10, family = "serif"),
+    axis.line = element_line(colour = "black", linewidth = 0.266)
+  )
+#ggsave("qqplot.png", qqplot, width = 3.2, height = 2.1)
+
+rm(fitted, residuals, residuals_df, res_plot, qqplot)
+```
+
+#Saving Model 2 Diagnostics
+```{r}
+####MAKING PLOTS FOR FIRST LM MODEL ON QUALITY
+#Make a better residuals plot:
+residuals <- residuals(Model3)
+fitted <- fitted(Model3)
+residuals_df <- data.frame(Residuals = residuals, Fitted = fitted)
+res_plot2 <- ggplot(residuals_df, aes(x = Fitted, y = Residuals)) +
+  geom_point(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.7) +
+  labs(x = "Fitted Values", y = "Residuals") +
+  ggtitle("5D - Model 3: Log of Video Game Quality")+
+  theme(
+    # Specify theme elements and their properties
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_blank(),
+    axis.title = element_text(size = 10, family = "serif"),
+    axis.text = element_text(size = 10, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266),
+    plot.title = element_text(size = 10, family = "serif"),
+    axis.line = element_line(colour = "black", linewidth = 0.266)
+  )
+#ggsave("res_plot2.png", res_plot2, width = 3.2, height = 2.1)
+
+
+qqplot2 <- ggplot(residuals_df, aes(sample = Residuals)) +
+  stat_qq(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.6) +
+  labs(x = "Standard Residuals", y = "Theoretical Quantiles", title = "5C - Model 3: Log of Video Game Quality") +
+  stat_qq_line(linetype = "dashed", colour = "grey", linewidth = 0.266)+
+    theme(
+    # Specify theme elements and their properties
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_blank(),
+    axis.title = element_text(size = 10, family = "serif"),
+    axis.text = element_text(size = 10, family = "serif"),
+    axis.ticks = element_line(colour = "black", linewidth = 0.266),
+    plot.title = element_text(size = 10, family = "serif"),
+    axis.line = element_line(colour = "black", linewidth = 0.266)
+  )
+#ggsave("qqplot2.png", qqplot2, width = 3.2, height = 2.1)
+
+rm(qqplot2, res_plot2, residuals_df, fitted, residuals)
+```
+
+#Top 3 Estimated Players for Conclusion
+```{r}
+sorted_data <- sep_dev_new[order(-sep_dev_new$Est_Players), ]
+
+# Get the top two observations
+top_two <- sorted_data[1:3, ]
+
+# Print the top two observations
+print(top_two)
+
+rm(top_two, sorted_data)
+```
+
+
+#THE ONE I USE FOR ANSWERING EXPLORATORY QUESTION 3
+```{r eval=FALSE, include=FALSE}
+y <- data.frame(sep_dev_new$Developer_1, #Get the separate developers.
+                sep_dev_new$Developer_2, 
+                sep_dev_new$Developer_3,
+                sep_dev_new$Developer_4,
+                sep_dev_new$Developer_5,
+                sep_dev_new$Developer_6,
+                sep_dev_new$Developer_7,
+                sep_dev_new$Developer_8,
+                sep_dev_new$Developer_9,
+                sep_dev_new$Developer_10,
+                sep_dev_new$Developer_11,
+                sep_dev_new$Developer_12,
+                sep_dev_new$Developer_13,
+                sep_dev_new$Developer_14,
+                sep_dev_new$Developer_15)
+
+net <- graph.data.frame(y, directed=F) #Make an undirected net
+
+V(net)$label <- V(net)$name #Set the names for the labels
+#V(net)$degree <- degree(net) #Set the degree values for the net
+
+na_node <- which(as.character(V(net)$name) == "NA")  #As the names are characters, detecting "which(is.na(V(g)$name))" doesn't work. Therefore, we read it as as.character, and then it works to detect the NA node.
+net_sub <- delete.vertices(net, na_node) #Delete the NA vertices.
+#net_sub_filtered <- delete.vertices(net_sub, which(degree(net_sub) < 2)) #With this you can filter on the number of connections. For example, if you do <5, you will only see nodes that have more than 5 connections.
+
+(clu <- components(net_sub)) #This shows all the clusters. clu$no shows that there are 11555 clusters. These also contains single nodes. It further shows each clustersize with $csize. 
+
+g  <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 1)])
+g6 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 6)])
+
+#g6 <- simplify(g6) #This removes the duplicate edges. However, we might be interested in duplicate edges
+
+#rm(g2, g3, g4, gMax, y, clu, net, na_node)
+#Finding descriptives of all developers for the degree centrality
+```
+
+```{r eval=FALSE, include=FALSE}
+#Choosing a layout
+lay <- layout_nicely(g6)
+cnet6 <- cluster_edge_betweenness(g6)
+
+
+#pdf(file = "SNA Plot equal or larger than 6 NEW.pdf",
+#    width = 30, 
+#    height = 30)
+plot(cnet6,
+     g6,
+     vertex.size = degree(g6)/2, #This adds the size of the nodes as the degree value that is computed later in the code.
+     edge.arrow.size = 0.05,
+     vertex.label.cex = 2,
+     layout = lay)
+#title("Clusters with >= 6 nodes with node size based on degree centrality",
+#     cex.main = 5, family = "serif")
+#igraph.options(plot.layout=layout.graphopt)
+#dev.off()
+
+```
+
+```{r}
+lay <- layout_nicely(g)
+pdf(file = "Test.pdf",
+    width = 30, 
+    height = 30)
+plot(g, #This adds the size of the nodes as the degree value that is computed later in the code.
+     vertex.size = 1,
+     edge.arrow.size = 1,
+     vertex.label = NA,
+     layout = lay)
+title("Clusters with >= 6 nodes  with node size based on degree centrality",
+     cex.main = 5, family = "serif")
+igraph.options(plot.layout=layout.graphopt)
+dev.off()
+```
+
+#Exploratory Reserach Question 1
+```{r}
+#Degree of Vertices Barplot
+df <- as.data.frame(table(degree(g)))
+df$Percentage <- round(100 * df$Freq/sum(df$Freq), digits = 2)
+df$Percentage <- paste0(df$Percentage, "%")
+
+degofvert <- 
+  ggplot(data = df, aes(x = Var1, y = Freq)) +
+  geom_col(fill = 'darkred', colour = 'black') +
+ # geom_text(aes(label = Percentage), position = position_dodge(width = 0.9), vjust = -0.25, size = 1.35) +
+  theme_bw() +
+  labs(x = "Degree of Vertices", y = "Frequency") +
+  ggtitle("Figure X: Barplot of Degree of Nodes SNA") + 
+  theme(text = element_text(family = "serif"))
+#ggsave("degreeofvertices.png", degofvert, width = 3, height = 3.7)
+degofvert
+```

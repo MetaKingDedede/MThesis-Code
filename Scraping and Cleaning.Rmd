@@ -1,0 +1,662 @@
+---
+title: "Scraping and Cleaning"
+output: html_document
+date: "2023-04-21"
+---
+
+###########SCRAPING AND CLEANING###########
+
+Playtracker.net only goes up ID 84491 right now. 
+This is the frame in which I scrape:
+```{r}
+page.table <- list(NULL)
+pos_nodes <- list(NULL)
+for(i in 63575:84491){ 
+page <- read_html(paste("https://playtracker.net/insight/game/",i,
+"", sep=""))
+  page.table[i] <- page %>%
+html_text() # perform the scraping here
+b <- page %>%
+html_nodes("h1, h4.faded.capitalize, div.level-featured.level-hexagon.center, div.superbold.wider, div.full.flex.shoo-bottom") %>%
+as.character()
+pos_nodes[[i]] <- data.frame(b)
+#Getting ONLY their primary positions in a different object
+Sys.sleep(0.2) # Waiting for a few seconds can prevent you from getting an HTTP error 429,
+# because of making too many requests to the website in a short time
+} 
+```
+
+This is the first scrape I did, does not have all the data. 
+```{r}
+#saveRDS(page.table, file = "scrape.Rda")
+#page.table <- readRDS(file = "scrape.Rda")
+
+#saveRDS(pos_nodes, file = "scrapenodes.Rda")
+#pos_nodes_old <- readRDS(file = "scrapenodes.Rda")
+```
+
+This is the second scrape. Something went wrong a few times, so I have three incomplete scrapes. I"ll merge them all together, so no issues.
+```{r}
+#saveRDS(page.table, file = "scrape2.Rda")
+#page.table <- readRDS(file = "scrape2.Rda")
+
+#saveRDS(pos_nodes, file = "scrapenodes2.Rda")
+#pos_nodes1 <- readRDS(file = "scrapenodes2.Rda")
+```
+
+```{r}
+#saveRDS(page.table, file = "scrape3.Rda")
+#page.table <- readRDS(file = "scrape3.Rda")
+
+#saveRDS(pos_nodes, file = "scrapenodes3.Rda")
+#pos_nodes2 <- readRDS(file = "scrapenodes3.Rda")
+```
+
+```{r}
+#saveRDS(page.table, file = "scrapefinal.Rda")
+#page.table <- readRDS(file = "scrapefinal.Rda")
+
+#saveRDS(pos_nodes, file = "scrapenodesfinal.Rda")
+#pos_nodes3 <- readRDS(file = "scrapenodesfinal.Rda")
+```
+
+Here, I clean the scraped data
+```{r}
+owners <- data.frame(Name = 1, 
+                     Platform = 2,
+                     Popularity_Score = 3,
+                     Est_Players = 4, 
+                     Est_Act_Players = 5,
+                     Avg_Achiev = 6,
+                     Avg_Tot_Playtime = 7,
+                     Avg_Rec_Playtime = 8,
+                     Median_Tot_Playtime = 9,
+                     Median_Rec_Playtime = 10,
+                     b = 11,
+                     c = 12)
+        
+for(i in 1:44118) {
+  owners[i, ] <- as.data.frame(t(pos_nodes1[[i]]))
+} 
+
+for(i in 44119:63575) {
+  owners[i, ] <- as.data.frame(t(pos_nodes2[[i]]))
+} 
+
+for(i in 63576:84491) {
+  owners[i, ] <- as.data.frame(t(pos_nodes3[[i]]))
+} 
+
+for(i in 1:12) {
+  owners[,i] <- as.character(owners[,i])
+  owners[,i] <- gsub('<.*?>', '', owners[,i])
+}
+
+owners <- owners[,-12]                                                             #It added another unnecessary column with a mix of game names and disclaimers about the way they measured certain stats. We remove that here
+
+owners$b <- str_replace_all(owners$b, "\\s+", " ")                                 #There was an issue with the string text in column b, where it still contained a lot of "\n" parts. This code fixes that.
+owners$Platform <- gsub("on ", "", owners$Platform)                                #It scraped "on X", and here we just remove the "on"
+
+owners$Name <- gsub("&amp;", "&", owners$Name) #So, in the Steam Owners thingy, there are a lot of missing special ASCII things, such as the '&'.
+#ownerssteam[ownerssteam$Name == "Wallace &amp; Gromit Ep 1: Fright of the Bumblebees",]
+#df[df$Name == "Wallace & Gromit Ep 1: Fright of the Bumblebees", ]
+
+#saveRDS(owners, file = "playtracker_owners.Rda") #Save the current ownership statistics.
+```
+
+```{r}
+
+owners <- readRDS(file = "playtracker_owners.Rda")                                #Read in the playtracker data
+ownerssteam <- subset(owners,                                                     #Remove the data of the other platforms such as Playstation
+       select = ,
+       subset = Platform == "Steam")
+  
+ownerssteam$release_date <- str_extract(ownerssteam$b,                            #Extract Release date from compiled text variable
+                                        "Release date .*?(?= Features|$)")  
+ownerssteam$features <- str_extract(ownerssteam$b,                                #Extract Features from compiled text variable
+                                    "Features .*?(?= Developer|$)")  
+ownerssteam$developer <- str_extract(ownerssteam$b,                               #Extract Developers from compiled text variable
+                                     "Developer .*?(?= Publisher|$)")
+ownerssteam$publisher <- str_extract(ownerssteam$b,                               #Extract Publishers from compiled text variable
+                                     "Publisher .*?(?= Genre|$)")
+ownerssteam$genre <- str_extract(ownerssteam$b,                                   #Extract Genres from compiled text variable
+                                 "Genre .*")
+
+ownerssteam$release_date <- gsub("Release date ", "", ownerssteam$release_date)   #Remove the string of text "Release Date" from each observation
+ownerssteam$features <- gsub("Features ", "", ownerssteam$features)               #Remove the string of text "Features" from each observation
+ownerssteam$developer <- gsub("Developer ", "", ownerssteam$developer)            #Remove the string of text "Developer" from each observation
+ownerssteam$publisher <- gsub("Publisher ", "", ownerssteam$publisher)            #Remove the string of text "Publisher" from each observation
+ownerssteam$genre <- gsub("Genre ", "", ownerssteam$genre)                        #Remove the string of text "Genre" from each observation
+
+colnames(ownerssteam)[12] <- "Release.date"                                       #Give it the correct column name
+colnames(ownerssteam)[13] <- "Features"
+colnames(ownerssteam)[14] <- "Developers"
+colnames(ownerssteam)[15] <- "Publishers"
+colnames(ownerssteam)[16] <- "Genre"
+
+ownerssteam$Release.date <- format(parse_date_time(ownerssteam$Release.date,      #Fix the time/month/day format.
+                                                   orders = c("%b %d, %Y", "%d %b, %Y")), "%Y-%m-%d")
+
+ownerssteam <- na.omit(ownerssteam)                                               #Omit NA
+```
+
+```{r}
+finaldataset <- left_join(ownerssteam,                                            #Join the Steam dataset from Kaggle with the dataset from Playtracker
+                          Steam, 
+                          by = join_by(Name), 
+                          multiple = "first") 
+
+finaldataset <- na.omit(finaldataset)                                             #Omit NA
+finaldataset <- finaldataset[,-c(2, 11:16, 24, 27, 32, 36)]                       #Drop useless columns
+finaldataset <- finaldataset %>%                                                  #Move the AppID variable in front of the Name variable
+  relocate(AppID, .before=Name)
+
+colnames(finaldataset)[11] <- "Release.date"                                      #Give 11th column the right name
+finaldataset <- finaldataset %>%                                                  #Move the Release.date variable in front of the Name variable
+  relocate(Release.date, .after=Name)
+colnames(finaldataset)[30] <- "Developers"                                        #Give 30th column the right name
+colnames(finaldataset)[31] <- "Publishers"                                        #Give 31st column the right name
+finaldataset <- finaldataset %>%                                                  #Move the Developers variable in front of the Release.date variable
+  relocate(Developers, .after=Release.date)
+finaldataset <- finaldataset %>%                                                  #Move the Publishers variable in front of the Developers variable
+  relocate(Publishers, .after=Developers)
+
+finaldataset$Est_Players <- gsub("~", "", finaldataset$Est_Players)               #Remove ~
+finaldataset$Est_Players <- gsub("\\*", "", finaldataset$Est_Players)             #Remove *
+finaldataset$Est_Act_Players <- gsub("~", "", finaldataset$Est_Act_Players)       #Remove ~
+finaldataset$Est_Act_Players <- gsub("\\*", "", finaldataset$Est_Act_Players)     #Remove *
+
+finaldataset$Est_Players <- parse_number(finaldataset$Est_Players) * ifelse(str_detect(finaldataset$Est_Players, "M"), 1000000, ifelse(str_detect(finaldataset$Est_Players, "K"), 1000, ifelse(str_detect(finaldataset$Est_Players, "B"), 1000000000, 1)))
+#Here we change the Estimated Players to an actual number
+
+finaldataset$Est_Act_Players <- parse_number(finaldataset$Est_Act_Players) * ifelse(str_detect(finaldataset$Est_Act_Players, "M"), 1000000, ifelse(str_detect(finaldataset$Est_Act_Players, "K"), 1000, ifelse(str_detect(finaldataset$Est_Act_Players, "B"), 1000000000, 1)))
+#Merging on developers and publishers won't work, as there are games that have had the same developer & publisher. Neither will on release date, as some games are released on the same date. Neither does name, as the titles have slightly different names, but it works slightly better. It has to be through Name, eventhough not all names are properly done. I know I can fix a few here and there, and I might do so. Eitehr way, I HAVE TO DO IT THROUGH NAMES. 
+
+#write.csv(finaldataset, "finaldataset.csv", row.names=FALSE)
+finaldf <- read.csv2("finaldataset.csv",
+                sep = ",", 
+                dec = ".", header = TRUE)
+```
+
+
+#Additional Cleaning after the scraping
+```{r include=FALSE}
+setwd("C:/Users/victo/Documents/Erasmus University/Masters/Thesis/Data")
+
+finaldf <- read.csv2("finaldataset.csv",
+                sep = ",", 
+                dec = ".", header = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(rvest)
+library(stringr)
+library(readr)
+library(knitr)
+library(igraph)
+#library(sna)
+library(plotrix)
+library(data.table)
+library(RColorBrewer)
+library(tibble)
+library(broom)
+library(splitstackshape)
+library(caret)
+library(lmtest)
+library(ggResidpanel)
+library(psych)
+library(MASS)
+library(sandwich)
+library(modelsummary)
+```
+
+```{r include=FALSE}
+#Covering all the Incorporated
+finaldf$Developers <- gsub(",inc", " Inc.", finaldf$Developers)
+finaldf$Developers <- gsub(", inc", " Inc.", finaldf$Developers)
+finaldf$Developers <- gsub(",Inc.", " Inc.", finaldf$Developers)
+finaldf$Developers <- gsub(", Inc.", " Inc.", finaldf$Developers)
+finaldf$Developers <- gsub(",Inc", " Inc.", finaldf$Developers)
+finaldf$Developers <- gsub(", Inc", " Inc.", finaldf$Developers)
+finaldf$Developers <- gsub(",INC.", " Inc.", finaldf$Developers)
+finaldf$Developers <- gsub(", INC.", " Inc.", finaldf$Developers)
+finaldf$Developers <- gsub(",INC", " Inc.", finaldf$Developers)
+finaldf$Developers <- gsub(", INC", " Inc.", finaldf$Developers)
+
+#Covering all the LLC
+finaldf$Developers <- gsub(",Llc.", " LLC.", finaldf$Developers)
+finaldf$Developers <- gsub(", Llc.", " LLC.", finaldf$Developers)
+finaldf$Developers <- gsub(",Llc", " LLC.", finaldf$Developers)
+finaldf$Developers <- gsub(", Llc", " LLC.", finaldf$Developers)
+finaldf$Developers <- gsub(",LLC.", " LLC.", finaldf$Developers)
+finaldf$Developers <- gsub(", LLC.", " LLC.", finaldf$Developers)
+finaldf$Developers <- gsub(",LLC", " LLC.", finaldf$Developers)
+finaldf$Developers <- gsub(", LLC", " LLC.", finaldf$Developers)
+finaldf$Developers <- gsub(", L.L.C", " L.L.C.", finaldf$Developers)
+
+#Covering all the Limited
+finaldf$Developers <- gsub(", ltd.", " ltd.", finaldf$Developers)
+finaldf$Developers <- gsub(",.Ltd.", " LTD.", finaldf$Developers)
+finaldf$Developers <- gsub(",. Ltd.", " LTD.", finaldf$Developers)
+finaldf$Developers <- gsub(",Ltd.", " LTD.", finaldf$Developers)
+finaldf$Developers <- gsub(", Ltd.", " LTD.", finaldf$Developers)
+finaldf$Developers <- gsub(",Ltd", " LTD.", finaldf$Developers)
+finaldf$Developers <- gsub(", Ltd", " LTD.", finaldf$Developers)
+finaldf$Developers <- gsub(",LTD.", " LTD.", finaldf$Developers)
+finaldf$Developers <- gsub(", LTD.", " LTD.", finaldf$Developers)
+finaldf$Developers <- gsub(",LTD", " LTD.", finaldf$Developers)
+finaldf$Developers <- gsub(", LTD", " LTD.", finaldf$Developers)
+
+finaldf$Developers <- gsub(", Limited", " Limited", finaldf$Developers)
+finaldf$Developers <- gsub(", LIMITED", " LIMITED", finaldf$Developers)
+
+#Covering all the Corporations
+finaldf$Developers <- gsub(", Corp", " Corp", finaldf$Developers)
+
+#Also, some studios have a comma in their name to begin with, such as "Oh, a Rock Studios!". These cases were all found by using finaldf[grep("XXX", finaldf$Developers), "Developers"].
+finaldf$Developers <- gsub("Oh, a Rock Studios!", "Oh a Rock Studios!", finaldf$Developers)
+finaldf$Developers <- gsub("Oh, a Rock! Studios", "Oh a Rock! Studios", finaldf$Developers)
+finaldf$Developers <- gsub("Kynapsis, Lda", "Kynapsis Lda", finaldf$Developers)
+finaldf$Developers <- gsub("CINEMAX, s.r.o", "CINEMAX s.r.o", finaldf$Developers)
+finaldf$Developers <- gsub("Patrick Kelley, CIT", "Patrick Kelley CIT", finaldf$Developers)
+finaldf$Developers <- gsub("Fantastic, yes", "Fantastic yes", finaldf$Developers)
+finaldf$Developers <- gsub(", a Ubisoft Studio", " a Ubisoft Studio", finaldf$Developers)
+finaldf$Developers <- gsub(", a.s.", " a.s.", finaldf$Developers) #For the studio BadFly Interactive, a.s.
+finaldf$Developers <- gsub(", Co. LTD.", " Co. LTD.", finaldf$Developers) #For International Games System, Co. LTD.
+finaldf$Developers <- gsub(", China", " China", finaldf$Developers) #For Darklord Ltd., China.
+finaldf$Developers <- gsub(", Commander", " Commander", finaldf$Developers) #For Good Morning, Commander
+finaldf$Developers <- gsub(", s.r.o.", " s.r.o.", finaldf$Developers) #For Hammerware, s.r.o.
+finaldf$Developers <- gsub(", s. r. o.", " s.r.o.", finaldf$Developers) #For Fatbot Games, s.r.o.
+finaldf$Developers <- gsub(", S.C.", " S.C.", finaldf$Developers) #For Vertex Games, S.C.
+finaldf$Developers <- gsub(", S.L.", " S.L.", finaldf$Developers) #For Tequila Works, S.L.
+finaldf$Developers <- gsub(", Reactor", " Reactor", finaldf$Developers) #For Fancy Bytes, Reactor
+finaldf$Developers <- gsub("Joon, Pol, Muutsch, Char & Torfi", "Joon; Pol; Muutsch; Char & Torfi", finaldf$Developers) #For Joon, Pol, Muutsch, Char & Torfi
+finaldf$Developers <- gsub("Robin, Alice, Julia and George", "Robin; Alice; Julia and George", finaldf$Developers) #For Robin, Alice, Julia and George
+finaldf$Developers <- gsub("Collin, Kaleb, & Jeya", "Collin; Kaleb; & Jeya", finaldf$Developers) #Collin, Kaleb, & Jeya
+finaldf$Developers <- gsub("Soft Pro", "Softpro", finaldf$Developers)
+finaldf$Developers <- gsub("Pentadimensional Games, SL", "Pentadimensional Games SL", finaldf$Developers)
+finaldf$Developers <- gsub("CREATIVE ASSEMBLY", "Creative Assembly", finaldf$Developers)
+finaldf$Developers <- gsub("Bandai Namco", "BANDAI NAMCO", finaldf$Developers) #There were quite a few different versions of Bandai Namco Studios, such as BANDAI NAMCO STUDIO, Bandai Namco Studios, etcetera.
+finaldf$Developers <- gsub("Studio", "Studios", finaldf$Developers)
+finaldf$Developers <- gsub("Studioss", "Studios", finaldf$Developers)
+finaldf$Developers <- gsub("BANDAI NAMCO Studios", "BANDAI NAMCO Studios Inc.", finaldf$Developers)
+finaldf$Developers <- gsub("BANDAI NAMCO Studios Inc. Inc.", "BANDAI NAMCO Studios Inc.", finaldf$Developers)
+
+#Some developers also include some individual developers. This can lead to cases where there are more than 10 developers in the list. For example, in row 3946, there is one (1) studio, and thirteen (13) individual developers, making the count a little harder.
+
+#n_distinct(test$Developer_1)
+
+#unique(sep_dev$Developer_11)
+
+finaldf[grep("396420", finaldf$AppID), "Developers"] #23-5-2023: I found out there are quite a few games without any developers. How I didn't notice before idk, but time to remove them because they are useless.
+AppID_to_remove <- c("396420", "305840", "749830", "245730", "906390", "90500", "279480", "525460", "663140", "750070", "449680")
+finaldf <- finaldf[!(finaldf$AppID %in% AppID_to_remove),]
+
+#Also remove duplicates
+duplicates <- duplicated(finaldf$AppID)
+finaldf <- finaldf[!duplicated(finaldf$AppID), ]
+
+rm(AppID_to_remove, duplicates)
+```
+
+#RUN
+```{r echo=FALSE}
+#
+finaldf$Est_Players <- as.numeric(finaldf$Est_Players)
+finaldf$Est_Act_Players <- as.numeric(finaldf$Est_Players)
+
+#Then we make a percentage quality stat:
+finaldf$Total <- finaldf$Positive + finaldf$Negative
+finaldf$PropTotal <- finaldf$Positive/finaldf$Total
+finaldf2 <- na.omit(finaldf) #Having 0 for these missing values doesn't make sense, as then you'd have a extremely low-rated thing and that skews the results.
+
+############################
+#Make categories
+finaldf2$categories <- cut(finaldf2$PropTotal, breaks = seq(0, 1, 0.05), include.lowest = TRUE) #Make 20 categories of quality category.
+unique(finaldf2$categories) #Checking how many unique values there are, and there are 20, nicely ordered with 20 levels.
+write.csv(finaldf2, "finaldataset2.csv", row.names=FALSE)
+```
+
+#RUN
+#Making separate Developer variables
+```{r include=FALSE}
+sep_dev <- finaldf2 %>%
+  separate(Developers, c("Developer_1", "Developer_2", "Developer_3", "Developer_4", "Developer_5", "Developer_6", "Developer_7", "Developer_8", "Developer_9", "Developer_10", "Developer_11", "Developer_12", "Developer_13", "Developer_14", "Developer_15"), 
+           sep = ",",
+           remove = FALSE,
+           fill = "right")
+```
+
+#RUN
+#Making separate genre variables and age variables
+```{r include=FALSE}
+sep_dev <- cSplit_e(data = sep_dev, split.col = "Genres", sep = ",", fill = 0, drop = FALSE, type = "character") #Splitting the genre variable into dummy variables to measure whether the game has that genre or not.
+sep_dev <- sep_dev %>%
+  mutate(value = 1) %>%
+  pivot_wider(names_from = Required.age, values_from = value, values_fill = 0, values_fn = list(value = length))
+
+sep_dev <- sep_dev[sep_dev$Genres_Accounting != 1, ]
+sep_dev <- sep_dev[sep_dev$`Genres_Animation & Modeling` != 1, ]
+sep_dev <- sep_dev[sep_dev$`Genres_Audio Production` != 1, ]
+sep_dev <- sep_dev[sep_dev$`Genres_Design & Illustration` != 1, ]
+sep_dev <- sep_dev[sep_dev$`Genres_Game Development` != 1, ]
+sep_dev <- sep_dev[sep_dev$`Genres_Photo Editing` != 1, ]
+sep_dev <- sep_dev[sep_dev$`Genres_Software Training` != 1, ]
+sep_dev <- sep_dev[sep_dev$Genres_Utilities != 1, ]
+sep_dev <- sep_dev[sep_dev$`Genres_Video Production` != 1, ]
+
+sep_dev <- sep_dev[, -c(52, 55, 56, 58, 62, 67, 72, 75, 76, 78 ) ]
+```
+
+#RUN
+#Making Games Published Per Developer by release date
+```{r}
+#sep_dev$Previous_games <- 0
+sep_dev <- sep_dev[order(sep_dev$Release.date),]
+
+##############Option 1: Only consider Developer_1 and call him "main developer"
+sep_dev$Ninetyplus <- NA
+sep_dev$Ninetyplus <- ifelse(sep_dev$PropTotal >= 0.9, 1, 0)
+sep_dev <- group_by(sep_dev, Developer_1)
+sep_dev <- mutate(sep_dev, Previous_games = row_number()) #Simply count up how often a certain developer was mentioned before, minus 1. Since it is ordered, this will be the same as counting how often they have published a game before.
+sep_dev$Previous_games <- sep_dev$Previous_games - 1
+sep_dev <- sep_dev %>% relocate(Previous_games, .after=Developers)
+
+#Do the same but then for games that have had higher than ninetyplus
+sep_dev <- group_by(sep_dev, Ninetyplus, Developer_1)
+sep_dev <- mutate(sep_dev, PreviousNinetyplus = row_number())
+sep_dev$PreviousNinetyplus <- sep_dev$PreviousNinetyplus - 1
+sep_dev <- sep_dev %>% relocate(PreviousNinetyplus, .after=Developers)
+```
+
+#RUN
+#Making the "No. Developers" variable.
+```{r}
+
+sep_dev$NoDev <- 0
+
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_1)[i] == TRUE){
+  sep_dev$NoDev[i] <- 1
+ }
+}
+
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_2)[i] == TRUE){
+   sep_dev$NoDev[i] <- 2
+ }
+}
+   
+for(i in 1:nrow(sep_dev)){ 
+if(!is.na(sep_dev$Developer_3)[i] == TRUE){
+   sep_dev$NoDev[i] <- 3
+ }
+}
+   
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_4)[i] == TRUE){
+   sep_dev$NoDev[i] <- 4
+ }
+}
+
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_5)[i] == TRUE){
+   sep_dev$NoDev[i] <- 5
+ }
+}
+
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_6)[i] == TRUE){
+   sep_dev$NoDev[i] <- 6
+ }
+}
+
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_7)[i] == TRUE){
+   sep_dev$NoDev[i] <- 7
+ }   
+}
+
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_8)[i] == TRUE){
+   sep_dev$NoDev[i] <- 8
+}
+}
+   
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_9)[i] == TRUE){
+   sep_dev$NoDev[i] <- 9
+ }
+}
+   
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_10)[i] == TRUE){
+   sep_dev$NoDev[i] <- 10
+ }
+}
+   
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_11)[i] == TRUE){
+   sep_dev$NoDev[i] <- 11
+ }
+}
+   
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_12)[i] == TRUE){
+   sep_dev$NoDev[i] <- 12
+ }
+}
+   
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_13)[i] == TRUE){
+   sep_dev$NoDev[i] <- 13
+ }
+}
+   
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_14)[i] == TRUE){
+   sep_dev$NoDev[i] <- 14
+ }
+}
+   
+for(i in 1:nrow(sep_dev)){
+if(!is.na(sep_dev$Developer_15)[i] == TRUE){
+   sep_dev$NoDev[i] <- 15
+ }
+}
+
+#write.csv(sep_dev, "seperatedevelopers.csv", row.names=FALSE)
+```
+
+#SNA ANALYSIS TO GET DEGREE STATISTICS
+```{r eval=FALSE, include=FALSE}
+y <- data.frame(sep_dev$Developer_1, #Get the separate developers.
+                sep_dev$Developer_2, 
+                sep_dev$Developer_3,
+                sep_dev$Developer_4,
+                sep_dev$Developer_5,
+                sep_dev$Developer_6,
+                sep_dev$Developer_7,
+                sep_dev$Developer_8,
+                sep_dev$Developer_9,
+                sep_dev$Developer_10,
+                sep_dev$Developer_11,
+                sep_dev$Developer_12,
+                sep_dev$Developer_13,
+                sep_dev$Developer_14,
+                sep_dev$Developer_15)
+
+net <- graph.data.frame(y, directed=F) #Make an undirected net
+
+V(net)$label <- V(net)$name #Set the names for the labels
+#V(net)$degree <- degree(net) #Set the degree values for the net
+
+na_node <- which(as.character(V(net)$name) == "NA")  #As the names are characters, detecting "which(is.na(V(g)$name))" doesn't work. Therefore, we read it as as.character, and then it works to detect the NA node.
+net_sub <- delete.vertices(net, na_node) #Delete the NA vertices.
+#net_sub_filtered <- delete.vertices(net_sub, which(degree(net_sub) < 2)) #With this you can filter on the number of connections. For example, if you do <5, you will only see nodes that have more than 5 connections.
+
+(clu <- components(net_sub)) #This shows all the clusters. clu$no shows that there are 11555 clusters. These also contains single nodes. It further shows each clustersize with $csize. 
+
+gMax <- induced_subgraph(net_sub, V(net_sub)[clu$membership == which.max(clu$csize)])  #This selects the largest cluster
+g  <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 1)]) #Select cluster with 1 or more nodes
+g2 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 2)])
+g3 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 3)])
+g4 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 4)]) #This selects the clusters larger than a specific value. 1 selects all of them, 2 selects 2000 of them, 3 about 500, 4 about 287. For visualization anything lower than 4 would be interesting.
+g5 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 5)])
+g6 <- induced_subgraph(net_sub, V(net_sub)[clu$membership %in% which(clu$csize >= 6)])
+
+#g6 <- simplify(g6) #This removes the duplicate edges. However, we might be interested in duplicate edges
+
+rm(g2, g3, g4, g5, g6, gMax, y, clu, net, net_sub, na_node)
+```
+
+#RUN
+```{r}
+node_degrees <- degree(g)
+sorted_degrees_dec <- as.data.frame(sort(node_degrees, decreasing = TRUE))
+colnames(sorted_degrees_dec) <- "Degree"
+sorted_degrees_dec <- rownames_to_column(sorted_degrees_dec, var = "Developer_1")
+#sorted_degrees_dec$Superstar <- ifelse(sorted_degrees_dec$degree >= 3, "TRUE", "FALSE")
+
+test <- merge(sorted_degrees_dec, sep_dev, by.x = "Developer_1", by.y = "Developer_1", all = FALSE) #With this, they have the degrees based on Developer_1
+test2 <- merge(sorted_degrees_dec, test, by.x = "Developer_1", by.y = "Developer_2", all.y = TRUE)
+test3 <- merge(sorted_degrees_dec, test2, by.x = "Developer_1", by.y = "Developer_3", all.y = TRUE)
+test4 <- merge(sorted_degrees_dec, test3, by.x = "Developer_1", by.y = "Developer_4", all.y = TRUE)
+test5 <- merge(sorted_degrees_dec, test4, by.x = "Developer_1", by.y = "Developer_5", all.y = TRUE)
+test6 <- merge(sorted_degrees_dec, test5, by.x = "Developer_1", by.y = "Developer_6", all.y = TRUE)
+test7 <- merge(sorted_degrees_dec, test6, by.x = "Developer_1", by.y = "Developer_7", all.y = TRUE)
+test8 <- merge(sorted_degrees_dec, test7, by.x = "Developer_1", by.y = "Developer_8", all.y = TRUE)
+
+colnames(test8)[1:16] <- c("Developer_8", "Degree_Dev_8", "Developer_7", "Degree_Dev_7", "Developer_6", "Degree_Dev_6", "Developer_5", "Degree_Dev_5", "Developer_4", "Degree_Dev_4", "Developer_3","Degree_Dev_3","Developer_2", "Degree_Dev_2", "Developer_1", "Degree_Dev_1")
+
+test8$Superstar <- FALSE
+
+#For-loops to check for stars in several columns. I only do 1 to 4, as those are the only ones that have values larger than 3. Furthermore, I do it in several for-loops because the next-statement kept also skipping things for Developer one if I included that.
+for (i in 1:nrow(test8)) { 
+  if (test8$Degree_Dev_1[i] >= 3) {
+    test8$Superstar[i] = TRUE
+  }
+}
+
+for (i in 1:nrow(test8)) { 
+  if (is.na(test8$Degree_Dev_2[i])) {
+    next 
+  }
+  if(test8$Degree_Dev_2[i] >= 3) {
+    test8$Superstar[i] = TRUE
+  }
+}
+
+for (i in 1:nrow(test8)) { 
+  if (is.na(test8$Degree_Dev_3[i])) {
+    next 
+  }
+  if(test8$Degree_Dev_3[i] >= 3) {
+    test8$Superstar[i] = TRUE
+  }
+}
+
+for (i in 1:nrow(test8)) { 
+  if (is.na(test8$Degree_Dev_4[i])) {
+    next 
+  }
+  if(test8$Degree_Dev_4[i] >= 3) {
+    test8$Superstar[i] = TRUE
+  }
+}
+
+columns_to_remove <- c(2,4,6,8,10,12,14,16) #Remove the degree columns as now obsolete
+test8 <- test8[, -columns_to_remove]
+
+test8 <- test8 %>%                                                  #Order the dataset a little
+  relocate(c(Developer_1, Developer_2, Developer_3, Developer_4, Developer_5, Developer_6, Developer_7, Developer_8), .before=Developer_9)
+
+test8 <- test8 %>%                                                  #Move the Superstar flag after the Developer variables
+  relocate(Superstar, .before=Publishers)
+
+colnames(test8)[72:85] <- c("Age_0", "Age_17", "Age_16", "Age_15", "Age_13", "Age_18", "Age_10", "Age_1", "Age_12", "Age_14", "Age_3", "Age_6", "Age_7", "Age_20")
+
+test8 <- test8 %>%                                                  #Order the age variables
+  relocate(c(Age_0, Age_1, Age_3, Age_6, Age_7, Age_10, Age_12, Age_13, Age_14, Age_15, Age_16, Age_17, Age_18, Age_20), .after= Genres_Violent)
+
+sum(test8$Age_0 == 1)
+sum(test8$Age_1 == 1)
+sum(test8$Age_3 == 1)
+sum(test8$Age_6 == 1)
+sum(test8$Age_7 == 1)
+sum(test8$Age_10 == 1)
+sum(test8$Age_12 == 1)
+sum(test8$Age_13 == 1)
+sum(test8$Age_14 == 1)
+sum(test8$Age_15 == 1)
+sum(test8$Age_16 == 1)
+sum(test8$Age_17 == 1)
+sum(test8$Age_18 == 1)
+sum(test8$Age_20 == 1)
+
+which(test8$Age_18 == 1)
+
+#Making smaller Age Variables, ranging from 0-7, 10-17, and 18+
+df <- test8[72:76]
+df$Combined <- rowSums(df)
+df$CombinedBinary <- as.integer(rowSums(df) > 0)
+test8$Age_0_7 <- df$CombinedBinary
+
+df <- test8[76:83]
+df$Combined <- rowSums(df)
+df$CombinedBinary <- as.integer(rowSums(df) > 0)
+test8$Age_10_17 <- df$CombinedBinary
+
+df <- test8[84:85]
+df$Combined <- rowSums(df)
+df$CombinedBinary <- as.integer(rowSums(df) > 0)
+test8$Age_18_plus <- df$CombinedBinary
+
+test8 <- test8[, -(72:85)] #Removing the old age variables
+
+rm(test, test2, test3, test4, test5, test6, test7, columns_to_remove, i, sep_dev, sorted_degrees_dec, node_degrees, df) #Cleaning up the environment a little
+
+sep_dev <- test8 #Make test8 into the sep_dev variable
+
+rm(test8) #Remove test8
+```
+
+```{r eval=FALSE, include=FALSE}
+b <- as.data.frame(degree(g))                             #Degree Centrality
+b[,2] <- as.data.frame(degree(g, normalized = TRUE))      #Normalized Degree Centrality
+b[,3] <- as.data.frame(round(betweenness(g), digits = 3)) #Betweenness Centrality
+b[,4] <- as.data.frame(betweenness(g, normalized = TRUE), digits = 3) #Normalized Betweenness Centrality
+b[,5] <- as.data.frame(closeness(g))                      #Closeness Centrality
+b[,6] <- as.data.frame(closeness(g, normalized = TRUE))   #Normalized Closeness Centrality
+
+colnames(b) <- c("Degree", "NormDegree", "Betweenness", "NormBetweenness", "Closeness", "NormCloseness")
+b <- tibble::rownames_to_column(b, "Developers")
+
+sep_dev_new <- merge(b, sep_dev, by.x = "Developers", by.y = "Developer_1")
+sep_dev_new <- sep_dev_new[order(sep_dev_new$Release.date),]
+
+sep_dev_new <- sep_dev_new %>%                                                  #Order some variables
+  relocate(c(Degree, NormDegree, Betweenness, NormBetweenness, Closeness, NormCloseness), .after= Superstar)
+sep_dev_new <- sep_dev_new %>%                                                  #Order the Developer variables again
+  relocate(c(Developers), .after= Previous_games)
+
+sep_dev_new <- sep_dev_new[,-4] #Remove double instance Developer_1
+colnames(sep_dev_new)[6] <- "Developer_1" #Changing the name of Developers to Developer_1 to make it consistent again
+
+sep_dev_new$Closeness[sep_dev_new$Closeness == "NaN"] <- 0
+sep_dev_new$NormCloseness[sep_dev_new$NormCloseness == "NaN"] <- NA
+
+sep_dev_new <- sep_dev_new[sep_dev_new$AppID != 253670, ] #This is an observation with an outrageous price and made some plots highly unreadable.
+```
+```{r}
+#Making separate year variable
+sep_dev_new$year <- year(sep_dev_new$Release.date)
+sep_dev_new$year <- as.factor(sep_dev_new$year)
+
+write.csv(sep_dev_new, "sep_dev_new.csv", row.names=FALSE)
+```
+
