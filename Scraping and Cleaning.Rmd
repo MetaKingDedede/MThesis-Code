@@ -141,6 +141,9 @@ ownerssteam <- na.omit(ownerssteam)                                             
 ```
 
 ```{r}
+Steam <- read.csv2("games.csv",                                                   #Read in the Kaggle dataset
+                sep = ",", 
+                dec = ".", header = TRUE)
 finaldataset <- left_join(ownerssteam,                                            #Join the Steam dataset from Kaggle with the dataset from Playtracker
                           Steam, 
                           by = join_by(Name), 
