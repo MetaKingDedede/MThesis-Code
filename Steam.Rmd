@@ -6,6 +6,22 @@ output:
 date: "2023-03-07"
 ---
 
+```{r}
+games <- read.csv2("games.csv",
+                   sep = ",",
+                   dec = ".", header = TRUE)
+
+games$Release.date <- mdy(games$Release.date)
+games <- games[order(games$Release.date),]
+
+#Observations per year
+obs_year <-
+  games %>% count(yr = year(Release.date))
+
+kable(obs_year, caption = "Games Released on Steam per year", col.names = c("Year", "Games Released"))
+```
+
+
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 library(lubridate)
 library(data.table)
@@ -22,6 +38,7 @@ library(psych)
 library(sandwich)
 library(tibble)
 library(tidyr)
+library(DHARMa)
 ```
 
 #TABLE 4: Games Released on Steam Per Year
@@ -30,6 +47,10 @@ sep_dev_new <- read.csv2("sep_dev_new.csv",
                 sep = ",", 
                 dec = ".", header = TRUE)
 
+sep_dev_new$year <- as.factor(sep_dev_new$year)
+```
+
+```{r}
 #Observations per day of the year
 obs_day <-
   sep_dev_new %>% count(day_of_year = date(Release.date))
@@ -469,7 +490,7 @@ histplayers <- ggplot(data = sep_dev_new) +
     axis.text = element_text(size = 10.66, family = "serif"),
     axis.ticks = element_line(colour = "black", linewidth = 0.266)) +
   ggtitle("Figure X: Histogram of Sales") 
-ggsave("histplayers.png", histplayers, width = 4, height = 2.5)
+#ggsave("histplayers.png", histplayers, width = 4, height = 2.5)
 
 histlogplayers <- ggplot(data = sep_dev_logplayers) +
   geom_histogram(aes(x = logplayers), fill = "darkred", colour = "black", binwidth = 0.5) +
@@ -480,7 +501,7 @@ histlogplayers <- ggplot(data = sep_dev_logplayers) +
     axis.text = element_text(size = 10.66, family = "serif"),
     axis.ticks = element_line(colour = "black", linewidth = 0.266)) +
   ggtitle("Figure X: Histogram of Sales") 
-ggsave("histlogplayers.png", histlogplayers, width = 4, height = 2.5)
+#ggsave("histlogplayers.png", histlogplayers, width = 4, height = 2.5)
 
 #I have looked at a few other models. Beta Regression doesn't work, as the dependent variable can only have values between 0 and 1, and not 0 and 1 itself, so that is already wrong. Other zero-inflated models such as Poission and Negative-Binomial require the dependent to be 0 and 1, which is also not the case. So, the only one that makes sense are a simple LM or a logistic regression. The reason for a logistic regression is because the dependent could be thought of as successes/total, so it makes sense. LM would just be the basic normal model.
 
@@ -524,21 +545,22 @@ histquality <- ggplot(data = sep_dev_new, aes(x = PropTotal)) +
     axis.ticks = element_line(colour = "black", linewidth = 0.266)) +
   ggtitle("Figure X: Histogram of Video Game Quality") 
 
-ggsave("histquality.png", histquality, width = 5.5, height = 3)
+#ggsave("histquality.png", histquality, width = 5.5, height = 3)
 
-suppressWarnings(Model1 <- glm(PropTotal ~ Superstar + NoDev + Previous_games + DLC.count + logprice + Degree + Genres_Action + Genres_Adventure + Genres_Casual + Genres_Early.Access + Genres_Education + Genres_Free.to.Play + Genres_Gore + Genres_Indie + Genres_Massively.Multiplayer + Genres_Nudity + Genres_RPG + Genres_Racing + Genres_Sexual.Content + Genres_Simulation + Genres_Sports + Genres_Strategy + Genres_Violent + year,
+Model1 <- glm(PropTotal ~ Superstar + NoDev + Previous_games + DLC.count + logprice + Degree + Genres_Action + Genres_Adventure + Genres_Casual + Genres_Early.Access + Genres_Education + Genres_Free.to.Play + Genres_Gore + Genres_Indie + Genres_Massively.Multiplayer + Genres_Nudity + Genres_RPG + Genres_Racing + Genres_Sexual.Content + Genres_Simulation + Genres_Sports + Genres_Strategy + Genres_Violent + year,
            data = sep_dev_new,
-           family = quasipoisson))
+           family = quasibinomial(link = "logit"))
 
-
-summary(Model1)
+summary(Model1) #Note it doesn't give an indication of AIC. Apparently that is not added when running quasi-models, same for pseudo R2
+anova(Model1, test = 'LRT') #Anova Deviance (where we see how the model is a measure of deviation from a perfect model)
+chi <- sum(residuals(Model1, type = 'pearson')^2) #Pearson's Chi-SQuare
+pchisq(chi, 49, lower.tail = FALSE)
+deviance(Model1)
 
 car::vif(Model1)
 
-#dispersiontest(Model1, alternative = c("less"))
+#testDispersion(Model1, alternative = c("less"))
 #summary.glm(Model1, dispersion = 0.2)
-
-
 
 # Loop over each variable in the dataset and create scatterplots
 for (var in names(df)) {
@@ -651,14 +673,14 @@ split <- sample.split(sep_dev_new, SplitRatio = 0.8)
 train <- subset(sep_dev_new, split == "TRUE")
 test <- subset(sep_dev_new, split == "FALSE")
 
-suppressWarnings(QPoisTrain <- glm(PropTotal ~ Superstar + NoDev + Previous_games + DLC.count + logprice + Degree + Genres_Action + Genres_Adventure + Genres_Casual + Genres_Early.Access + Genres_Education + Genres_Free.to.Play + Genres_Gore + Genres_Indie + Genres_Massively.Multiplayer + Genres_Nudity + Genres_RPG + Genres_Racing + Genres_Sexual.Content + Genres_Simulation + Genres_Sports + Genres_Strategy + Genres_Violent + year,
+QPoisTrain <- glm(PropTotal ~ Superstar + NoDev + Previous_games + DLC.count + logprice + Degree + Genres_Action + Genres_Adventure + Genres_Casual + Genres_Early.Access + Genres_Education + Genres_Free.to.Play + Genres_Gore + Genres_Indie + Genres_Massively.Multiplayer + Genres_Nudity + Genres_RPG + Genres_Racing + Genres_Sexual.Content + Genres_Simulation + Genres_Sports + Genres_Strategy + Genres_Violent + year,
            data = train,
-           family = quasipoisson))
+           family = quasibinomial(link = "logit"))
 
 summary(QPoisTrain)
 #Train set doesn't have any 1998 and 2000 variables, so delete those from test. 
 test <- test[-c(1:2),]
-pred <- exp(predict(QPoisTrain, test[,-58])) #Take the exponential, as they are log-odds.
+pred <- predict(QPoisTrain, test, type = "response")
 pred <- as.numeric(pred)
 
 test$pred <- pred
@@ -851,7 +873,7 @@ residuals_df <- data.frame(Residuals = residuals, Fitted = fitted)
 res_plot <- ggplot(residuals_df, aes(x = Fitted, y = Residuals)) +
   geom_point(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.7) +
   labs(x = "Fitted Values", y = "Residuals") +
-  ggtitle("5B - Model 2: Log of Video Game Sales")+
+  ggtitle("6B - Model 2: Log of Video Game Sales")+
   theme(
     # Specify theme elements and their properties
     panel.background = element_rect(fill = "white", color = NA),
@@ -867,7 +889,7 @@ res_plot <- ggplot(residuals_df, aes(x = Fitted, y = Residuals)) +
 
 qqplot <- ggplot(residuals_df, aes(sample = Residuals)) +
   stat_qq(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.6) +
-  labs(x = "Standard Residuals", y = "Theoretical Quantiles", title = "5A - Model 2: Log of Video Game Sales") +
+  labs(x = "Standard Residuals", y = "Theoretical Quantiles", title = "6A - Model 2: Log of Video Game Sales") +
   stat_qq_line(linetype = "dashed", colour = "grey", linewidth = 0.266)+
     theme(
     # Specify theme elements and their properties
@@ -894,7 +916,7 @@ residuals_df <- data.frame(Residuals = residuals, Fitted = fitted)
 res_plot2 <- ggplot(residuals_df, aes(x = Fitted, y = Residuals)) +
   geom_point(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.7) +
   labs(x = "Fitted Values", y = "Residuals") +
-  ggtitle("5D - Model 3: Log of Video Game Quality")+
+  ggtitle("6D - Model 3: Log of Video Game Quality")+
   theme(
     # Specify theme elements and their properties
     panel.background = element_rect(fill = "white", color = NA),
@@ -905,12 +927,12 @@ res_plot2 <- ggplot(residuals_df, aes(x = Fitted, y = Residuals)) +
     plot.title = element_text(size = 10, family = "serif"),
     axis.line = element_line(colour = "black", linewidth = 0.266)
   )
-#ggsave("res_plot2.png", res_plot2, width = 3.2, height = 2.1)
+ggsave("res_plot2.png", res_plot2, width = 3.2, height = 2.1)
 
 
 qqplot2 <- ggplot(residuals_df, aes(sample = Residuals)) +
   stat_qq(colour = "darkred", shape = 21, fill = "white", size = 0.01, alpha = 0.6) +
-  labs(x = "Standard Residuals", y = "Theoretical Quantiles", title = "5C - Model 3: Log of Video Game Quality") +
+  labs(x = "Standard Residuals", y = "Theoretical Quantiles", title = "6C - Model 3: Log of Video Game Quality") +
   stat_qq_line(linetype = "dashed", colour = "grey", linewidth = 0.266)+
     theme(
     # Specify theme elements and their properties
@@ -922,7 +944,7 @@ qqplot2 <- ggplot(residuals_df, aes(sample = Residuals)) +
     plot.title = element_text(size = 10, family = "serif"),
     axis.line = element_line(colour = "black", linewidth = 0.266)
   )
-#ggsave("qqplot2.png", qqplot2, width = 3.2, height = 2.1)
+ggsave("qqplot2.png", qqplot2, width = 3.2, height = 2.1)
 
 rm(qqplot2, res_plot2, residuals_df, fitted, residuals)
 ```
@@ -1034,4 +1056,196 @@ degofvert <-
   theme(text = element_text(family = "serif"))
 #ggsave("degreeofvertices.png", degofvert, width = 3, height = 3.7)
 degofvert
+```
+
+
+```{r echo=FALSE}
+#Prep data so it can be used to calculate the avg games per developer.
+sep_dev2 <- sep_dev_new[, c(2, 6:20)]
+sep_dev_long <- sep_dev2 %>%
+  pivot_longer(cols = c(Developer_1, Developer_2, Developer_3, Developer_4, Developer_5, Developer_6, Developer_7, Developer_8, Developer_9, Developer_10, Developer_11, Developer_12, Developer_13, Developer_14, Developer_15),
+               names_to = "oldcolnames",
+               values_to = "Developers")
+sep_dev_long <- na.omit(sep_dev_long)
+
+avg_degree <- mean(degree(g)) #This is the average co-developership if including developers that have 0.
+avg_games_per_developer <- nrow(sep_dev_long)/n_distinct(sep_dev_long$Developers)
+#Avg games per superstar developer:
+# Sort node degrees in descending order
+node_degrees <- degree(g)
+sorted_degrees_dec <- sort(node_degrees, decreasing = TRUE)
+top_117_nodes <- names(sorted_degrees_dec)[1:117] # Extract top 117 nodes with highest degrees, these are my superstars
+top_117_degrees <- node_degrees[top_117_nodes]
+average_linkage <- mean(top_117_degrees)
+
+sep_dev_long_117 <- sep_dev_long[sep_dev_long$Developers %in% top_117_nodes, ] #Keep only my superstars
+avg_games_per_superstar <- nrow(sep_dev_long_117)/n_distinct(sep_dev_long_117$Developers)
+
+degrees <- degree(g)
+most_connected_node <- which.max(degree(g)) #The most connected studio is Alawar Entertainment
+most_connected_node
+max_degree <- max(degree(g)) #Alawar Entertainment has a maximum connections of 17. This is the highest connected a studio is.
+sum(table(sep_dev_long[grep("Alawar Entertainment", sep_dev_long$Developers), "Developers"]))
+
+second_max_degree <- max(degrees[degrees < max_degree])
+second_most_connected_node <- which(degrees == second_max_degree)
+second_most_connected_node
+
+third_max_degree <- max(degrees[degrees < second_max_degree])
+third_most_connected_node <- which(degrees == third_max_degree)
+third_most_connected_node
+
+fourth_max_degree <- max(degrees[degrees < third_max_degree])
+fourth_most_connected_node <- which(degrees == fourth_max_degree)
+fourth_most_connected_node
+
+fifth_max_degree <- max(degrees[degrees < fourth_max_degree])
+fifth_most_connected_node <- which(degrees == fifth_max_degree)
+fifth_most_connected_node
+
+sixth_max_degree <- max(degrees[degrees < fifth_max_degree])
+sixth_most_connected_node <- which(degrees == sixth_max_degree)
+sixth_most_connected_node
+
+sep_dev_new$co_developed <- !is.na(sep_dev_new$Developer_2) #We really only need to use Developer 2, because if they have more developers than 2, they will always contain the second developer, and we only look at co-authorship.
+percentage_co_developed <- (sum(sep_dev_new$co_developed) / nrow(sep_dev_new)) * 100 #Total Co-Developership
+#Adjust data to find the vo-developership for superstars
+sep_dev_2 <- sep_dev_new[sep_dev_new$Developer_1 %in% top_117_nodes, ] 
+sep_dev_3 <- sep_dev_new[sep_dev_new$Developer_2 %in% top_117_nodes, ] 
+sep_dev_4 <- sep_dev_new[sep_dev_new$Developer_3 %in% top_117_nodes, ] 
+sep_dev_5 <- sep_dev_new[sep_dev_new$Developer_4 %in% top_117_nodes, ] #Only need to go up until this, because after Developer 4 there are no matches anymore.
+merged <- unique(rbind(sep_dev_2, sep_dev_3, sep_dev_4, sep_dev_5))
+percentage_co_developed_superstar <- (sum(merged$co_developed) / nrow(merged)) * 100 #Co-Developership Superstars
+
+  Alawar <- subset(sep_dev_new, Developer_1 == "Alawar Entertainment" | Developer_2 == "Alawar Entertainment" | Developer_3 == "Alawar Entertainment", select = c(Developer_1, Developer_2, Developer_3, co_developed, PropTotal, Est_Players, Name))
+  SNK <- subset(sep_dev_new, Developer_1 == "SNK CORPORATION" | Developer_2 == "SNK CORPORATION" | Developer_3 == "SNK CORPORATION", select = c(Developer_1, Developer_2, Developer_3, co_developed, PropTotal, Est_Players, Name))
+  Feral <- subset(sep_dev_new, Developer_1 == "Feral Interactive (Mac)" | Developer_2 == "Feral Interactive (Mac)" | Developer_3 == "Feral Interactive (Mac)" | Developer_4 == "Final Interactive (Mac)", select = c(Developer_1, Developer_2, Developer_3, Developer_4, co_developed, PropTotal, Est_Players, Name))
+  Idea <- subset(sep_dev_new, Developer_1 == "Idea Factory" | Developer_2 == "Idea Factory" | Developer_3 == "Idea Factory" | Developer_4 == "Idea Factory", select = c(Developer_1, Developer_2, Developer_3, Developer_4, co_developed, PropTotal, Est_Players, Name))
+  Tero <- subset(sep_dev_new, Developer_1 == "Tero Lunkka" | Developer_2 == "Tero Lunkka" | Developer_3 == "Tero Lunkka" | Developer_4 == "Tero Lunkka", select = c(Developer_1, Developer_2, Developer_3, Developer_4, co_developed, PropTotal, Est_Players, Name))
+  Squenix <- subset(sep_dev_new, Developer_1 == "Square Enix" | Developer_2 == "Square Enix" | Developer_3 == "Square Enix" | Developer_4 == "Square Enix", select = c(Developer_1, Developer_2, Developer_3, Developer_4, co_developed, PropTotal, Est_Players, Name))
+  Dotemu <- subset(sep_dev_new, Developer_1 == "Dotemu" | Developer_2 == "Dotemu" | Developer_3 == "Dotemu" | Developer_4 == "Dotemu", select = c(Developer_1, Developer_2, Developer_3, Developer_4, co_developed, PropTotal, Est_Players, Name))
+  GameHouse <- subset(sep_dev_new, Developer_1 == "GameHouse" | Developer_2 == "GameHouse" | Developer_3 == "GameHouse" | Developer_4 == "GameHouse", select = c(Developer_1, Developer_2, Developer_3, Developer_4, co_developed, PropTotal, Est_Players, Name))
+  CA <- subset(sep_dev_new, Developer_1 == "Creative Assembly" | Developer_2 == "Creative Assembly" | Developer_3 == "Creative Assembly" | Developer_4 == "Creative Assembly", select = c(Developer_1, Developer_2, Developer_3, Developer_4, co_developed, PropTotal, Est_Players, Name))
+
+#Make the table:
+highlinks <- data.frame("Links" = 1:11, "Games_Released" = 1:11, "Codeveloped" = 1:11, "Avg_Quality" = 1:11, "Tot_Sales" = 1:11, "Best_Selling_Title" = 1:11, "Q_Best_Seller" = 1:11, "Sales_Best_Seller")
+
+row.names(highlinks)[1] <- names(which.max(degree(g)))
+row.names(highlinks)[2] <- names(which(degrees == second_max_degree))[1]
+row.names(highlinks)[3] <- names(which(degrees == second_max_degree))[2]
+row.names(highlinks)[4] <- names(which(degrees == third_max_degree))
+row.names(highlinks)[5] <- names(which(degrees == third_max_degree))[2]
+row.names(highlinks)[6] <- names(which(degrees == fourth_max_degree))
+row.names(highlinks)[7] <- names(which(degrees == fourth_max_degree))[2]
+row.names(highlinks)[8] <- names(which(degrees == fourth_max_degree))[3]
+row.names(highlinks)[9] <- names(which(degrees == fifth_max_degree))
+row.names(highlinks)[10] <- "Average Superstars"
+row.names(highlinks)[11] <- "Average all"
+
+highlinks[1, 1] <- max(degree(g))
+highlinks[2, 1] <- max(degrees[degrees < max_degree])
+highlinks[3, 1] <- max(degrees[degrees < max_degree])
+highlinks[4, 1] <- max(degrees[degrees < second_max_degree])
+highlinks[5, 1] <- max(degrees[degrees < second_max_degree])
+highlinks[6, 1] <- max(degrees[degrees < third_max_degree])
+highlinks[7, 1] <- max(degrees[degrees < third_max_degree])
+highlinks[8, 1] <- max(degrees[degrees < third_max_degree])
+highlinks[9, 1] <- max(degrees[degrees < fourth_max_degree])
+highlinks[10, 1] <- round(mean(top_117_degrees), digits = 3)
+highlinks[11, 1] <- round(mean(degree(g)), digits = 3)
+
+highlinks[1, 2] <- sum(table(sep_dev_long[grep("Alawar Entertainment", sep_dev_long$Developers), "Developers"]))
+highlinks[2, 2] <- sum(table(sep_dev_long[grep("SNK CORPORATION", sep_dev_long$Developers), "Developers"]))
+highlinks[3, 2] <- sum(table(sep_dev_long[grep("Feral Interactive (Mac)", sep_dev_long$Developers, fixed = TRUE), "Developers"]))
+highlinks[4, 2] <- sum(table(sep_dev_long[grep("Idea Factory", sep_dev_long$Developers), "Developers"]))
+highlinks[5, 2] <- sum(table(sep_dev_long[grep("Tero Lunkka", sep_dev_long$Developers), "Developers"]))
+highlinks[6, 2] <- sum(table(sep_dev_long[grep("Square Enix", sep_dev_long$Developers), "Developers"]))
+highlinks[7, 2] <- sum(table(sep_dev_long[grep("Dotemu", sep_dev_long$Developers), "Developers"]))
+highlinks[8, 2] <- sum(table(sep_dev_long[grep("GameHouse", sep_dev_long$Developers), "Developers"]))
+highlinks[9, 2] <- sum(table(sep_dev_long[grep("Creative Assembly", sep_dev_long$Developers), "Developers"]))
+highlinks[10, 2] <- round(nrow(sep_dev_long_117)/n_distinct(sep_dev_long_117$Developers), digits = 3)
+highlinks[11, 2] <- round(nrow(sep_dev_long)/n_distinct(sep_dev_long$Developers), digits = 3)
+
+highlinks[1, 3] <- round((sum(Alawar$co_developed) / nrow(Alawar)) * 100, digits = 3)
+highlinks[2, 3] <- round((sum(SNK$co_developed) / nrow(SNK)) * 100, digits = 3)
+highlinks[3, 3] <- round((sum(Feral$co_developed) / nrow(Feral)) * 100, digits = 3)
+highlinks[4, 3] <- round((sum(Idea$co_developed) / nrow(Idea)) * 100, digits = 3)
+highlinks[5, 3] <- round((sum(Tero$co_developed) / nrow(Tero)) * 100, digits = 3)
+highlinks[6, 3] <- round((sum(Squenix$co_developed) / nrow(Squenix)) * 100, digits = 3)
+highlinks[7, 3] <- round((sum(Dotemu$co_developed) / nrow(Dotemu)) * 100, digits = 3)
+highlinks[8, 3] <- round((sum(GameHouse$co_developed) / nrow(GameHouse)) * 100, digits = 3)
+highlinks[9, 3] <- round((sum(CA$co_developed) / nrow(CA)) * 100, digits = 3)
+highlinks[10, 3] <- round((sum(merged$co_developed) / nrow(merged)) * 100, digits = 3)
+highlinks[11, 3] <- round((sum(sep_dev_new$co_developed) / nrow(sep_dev_new)) * 100, digits = 3) #Total Co-Developership
+
+highlinks[1, 4] <- round((sum(Alawar$PropTotal) / nrow(Alawar)) * 100, digits = 3)
+highlinks[2, 4] <- round((sum(SNK$PropTotal) / nrow(SNK)) * 100, digits = 3)
+highlinks[3, 4] <- round((sum(Feral$PropTotal) / nrow(Feral)) * 100, digits = 3)
+highlinks[4, 4] <- round((sum(Idea$PropTotal) / nrow(Idea)) * 100, digits = 3)
+highlinks[5, 4] <- round((sum(Tero$PropTotal) / nrow(Tero)) * 100, digits = 3)
+highlinks[6, 4] <- round((sum(Squenix$PropTotal) / nrow(Squenix)) * 100, digits = 3)
+highlinks[7, 4] <- round((sum(Dotemu$PropTotal) / nrow(Dotemu)) * 100, digits = 3)
+highlinks[8, 4] <- round((sum(GameHouse$PropTotal) / nrow(GameHouse)) * 100, digits = 3)
+highlinks[9, 4] <- round((sum(CA$PropTotal) / nrow(CA)) * 100, digits = 3)
+highlinks[10, 4] <- round((sum(merged$PropTotal) / nrow(merged)) * 100, digits = 3)
+highlinks[11, 4] <- round((sum(sep_dev_new$PropTotal) / nrow(sep_dev_new)) * 100, digits = 3) 
+
+highlinks[1, 5] <- round(sum(Alawar$Est_Players), digits = 3)
+highlinks[2, 5] <- round(sum(SNK$Est_Players), digits = 3)
+highlinks[3, 5] <- round(sum(Feral$Est_Players), digits = 3)
+highlinks[4, 5] <- round(sum(Idea$Est_Players), digits = 3)
+highlinks[5, 5] <- round(sum(Tero$Est_Players), digits = 3)
+highlinks[6, 5] <- round(sum(Squenix$Est_Players), digits = 3)
+highlinks[7, 5] <- round(sum(Dotemu$Est_Players), digits = 3)
+highlinks[8, 5] <- round(sum(GameHouse$Est_Players), digits = 3)
+highlinks[9, 5] <- round(sum(CA$Est_Players), digits = 3)
+highlinks[10, 5] <- round(sum(merged$Est_Players), digits = 3)
+highlinks[11, 5] <- round(sum(sep_dev_new$Est_Players), digits = 3) 
+
+highlinks[1, 6] <- Alawar$Name[which.max(Alawar$Est_Players)]
+highlinks[2, 6] <- SNK$Name[which.max(SNK$Est_Players)]
+highlinks[3, 6] <- Feral$Name[which.max(Feral$Est_Players)]
+highlinks[4, 6] <- Idea$Name[which.max(Idea$Est_Players)]
+highlinks[5, 6] <- Tero$Name[which.max(Tero$Est_Players)]
+highlinks[6, 6] <- Squenix$Name[which.max(Squenix$Est_Players)]
+highlinks[7, 6] <- Dotemu$Name[which.max(Dotemu$Est_Players)]
+highlinks[8, 6] <- GameHouse$Name[which.max(GameHouse$Est_Players)]
+highlinks[9, 6] <- CA$Name[which.max(CA$Est_Players)]
+highlinks[10, 6] <- merged$Name[which.max(merged$Est_Players)]
+highlinks[11, 6] <- sep_dev_new$Name[which.max(sep_dev_new$Est_Players)]
+
+highlinks[1, 7] <- Alawar$PropTotal[which.max(Alawar$Est_Players)] * 100
+highlinks[2, 7] <- SNK$PropTotal[which.max(SNK$Est_Players)] * 100
+highlinks[3, 7] <- Feral$PropTotal[which.max(Feral$Est_Players)] * 100
+highlinks[4, 7] <- Idea$PropTotal[which.max(Idea$Est_Players)] * 100
+highlinks[5, 7] <- Tero$PropTotal[which.max(Tero$Est_Players)] * 100
+highlinks[6, 7] <- Squenix$PropTotal[which.max(Squenix$Est_Players)] * 100
+highlinks[7, 7] <- Dotemu$PropTotal[which.max(Dotemu$Est_Players)] * 100
+highlinks[8, 7] <- GameHouse$PropTotal[which.max(GameHouse$Est_Players)] * 100
+highlinks[9, 7] <- CA$PropTotal[which.max(CA$Est_Players)] * 100 
+highlinks[10, 7] <- merged$PropTotal[which.max(merged$Est_Players)] * 100
+highlinks[11, 7] <- sep_dev_new$PropTotal[which.max(sep_dev_new$Est_Players)] * 100
+
+highlinks[1, 8] <- round(Alawar$Est_Players[which.max(Alawar$Est_Players)], digits = 3)
+highlinks[2, 8] <- SNK$Est_Players[which.max(SNK$Est_Players)]
+highlinks[3, 8] <- Feral$Est_Players[which.max(Feral$Est_Players)]
+highlinks[4, 8] <- Idea$Est_Players[which.max(Idea$Est_Players)]
+highlinks[5, 8] <- Tero$Est_Players[which.max(Tero$Est_Players)]
+highlinks[6, 8] <- Squenix$Est_Players[which.max(Squenix$Est_Players)]
+highlinks[7, 8] <- Dotemu$Est_Players[which.max(Dotemu$Est_Players)]
+highlinks[8, 8] <- GameHouse$Est_Players[which.max(GameHouse$Est_Players)]
+highlinks[9, 8] <- CA$Est_Players[which.max(CA$Est_Players)]
+highlinks[10, 8] <- merged$Est_Players[which.max(merged$Est_Players)]
+highlinks[11, 8] <- sep_dev_new$Est_Players[which.max(sep_dev_new$Est_Players)]
+
+#highlinks <- rbind(formatC(as.numeric(highlinks[1,]), format = "d"),
+#                   formatC(as.numeric(highlinks[2,]), format = "d"),
+#                   formatC(as.numeric(highlinks[3,]), format = "d"),
+#                   formatC(as.numeric(highlinks[4,]), format = "d"),
+#                   formatC(as.numeric(highlinks[5,]), format = "f", digits = 3),
+#                   formatC(as.numeric(highlinks[6,]), format = "f", digits = 3))
+rownames(highlinks) <-  c("Alawar Entertainment", "SNK CORPORATION", "Feral Interactive (Mac)", "Idea Factory", "Average Superstars", "Average All")
+kable(highlinks, caption = "Statistics for game developers with largest number of links", col.names = c("Links", "Games Released", "% Co-Developed", "Average Quality", "Average Sales", "Best Selling Title", "Quality Best Selling Title", "Sales Best Selling Title"))
+
+rm(Alawar, Feral, g, gMax, highlinks, Idea, net, sep_dev_2, sep_dev_3, sep_dev_4, sep_dev_5, sep_dev_long, sep_dev_long_117, sep_dev2, SNK, y, average_linkage, avg_degree, avg_games_per_developer, avg_games_per_superstar, degrees, fifth_max_degree, fifth_most_connected_node, fourth_max_degree, fourth_most_connected_node, max_degree, most_connected_node, na_node, node_degrees, percentage_co_developed, percentage_co_developed_superstar, second_max_degree, second_most_connected_node, third_max_degree, third_most_connected_node, top_117_degrees, top_117_nodes, merged, sorted_degrees_dec, sixth_max_degree, sixth_most_connected_node, GameHouse, Dotemu, Squenix, Tero, CA)
 ```
