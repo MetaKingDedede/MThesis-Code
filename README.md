@@ -1,9 +1,9 @@
 # MThesis-Code
 Rmd files for Master Thesis
 
-Scraping and Cleaning = Code used for data collection and data scraping
+Scraping and Cleaning.Rmd = Code used for data collection and data scraping
 
-Steam = code used to analyse the dataset created in the Scraping and Cleaning RMD
+Steam.Rmd = code used to analyse the dataset created in the Scraping and Cleaning RMD
 
 playtracker_owners.Rda = scraped data from PlayTracker.net
 
